@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>活动方案案例库｜高保真设计稿</title>
+<style>
+  :root{
+    --bg:#eef3fb;
+    --paper:#ffffff;
+    --ink:#101828;
+    --muted:#64748b;
+    --line:#e5eaf3;
+    --line-strong:#d8e0ee;
+    --primary:#2f5bff;
+    --primary-dark:#1436b8;
+    --cyan:#14b8c4;
+    --mint:#22c55e;
+    --violet:#7c3aed;
+    --amber:#f59e0b;
+    --rose:#f43f5e;
+    --navy:#07122f;
+    --soft-blue:#eef4ff;
+    --soft-cyan:#e8fbff;
+    --soft-violet:#f4efff;
+    --soft-amber:#fff8e7;
+    --radius-lg:32px;
+    --radius-md:22px;
+    --shadow: 0 28px 80px rgba(15,23,42,.13);
+    --shadow-card: 0 14px 42px rgba(15,23,42,.08);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background: radial-gradient(circle at top left, #dbe9ff 0, transparent 34%),
+                radial-gradient(circle at 92% 10%, #e7ddff 0, transparent 30%),
+                var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  }
+  .board-header{
+    width:1440px;
+    margin:48px auto 18px;
+    display:flex;align-items:end;justify-content:space-between;
+  }
+  .board-header h1{margin:0;font-size:42px;letter-spacing:-.03em;color:#0b1226}
+  .board-header p{margin:10px 0 0;color:#64748b;font-size:17px}
+  .board-meta{display:flex;gap:10px;align-items:center;color:#334155;font-weight:700}
+  .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 12px;font-size:13px;color:#334155;white-space:nowrap}
+  .chip.primary{background:#edf3ff;border-color:#cbd8ff;color:#2444d8}
+  .chip.green{background:#ebfdf2;border-color:#bbf7d0;color:#16834a}
+  .chip.amber{background:#fff7e7;border-color:#fde6ac;color:#a76605}
+  .chip.violet{background:#f5f0ff;border-color:#ddd0ff;color:#6730bf}
+  .frame{
+    width:1440px;
+    height:1024px;
+    margin:28px auto 72px;
+    background:var(--paper);
+    border-radius:42px;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    position:relative;
+    border:1px solid rgba(255,255,255,.75);
+  }
+  .frame-label{
+    position:absolute;left:36px;top:28px;z-index:30;
+    color:#94a3b8;font-weight:800;font-size:13px;letter-spacing:.12em;text-transform:uppercase;
+  }
+  .topbar{
+    height:76px;padding:0 44px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(226,232,240,.86);background:rgba(255,255,255,.86);backdrop-filter: blur(18px);position:relative;z-index:20;
+  }
+  .logo{display:flex;align-items:center;gap:12px;font-weight:900;font-size:20px;color:#0f172a;letter-spacing:-.02em}
+  .logo-mark{width:38px;height:38px;border-radius:14px;background:linear-gradient(135deg,var(--primary),#0fc6d4);display:grid;place-items:center;color:#fff;font-weight:900;box-shadow:0 12px 24px rgba(47,91,255,.28)}
+  .nav{display:flex;align-items:center;gap:26px;color:#64748b;font-weight:700;font-size:15px}
+  .nav span.active{color:var(--primary);position:relative}.nav span.active:after{content:"";position:absolute;left:10%;right:10%;bottom:-24px;height:3px;border-radius:999px;background:var(--primary)}
+  .user{display:flex;align-items:center;gap:14px}.avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#111827,#64748b);color:#fff;display:grid;place-items:center;font-weight:800}.icon-btn{width:40px;height:40px;border:1px solid var(--line);border-radius:14px;display:grid;place-items:center;color:#64748b;background:#fff}
+  .hero-bg{position:absolute;inset:76px 0 0;background:linear-gradient(180deg,#f7faff 0,#fff 64%)}
+  .orb{position:absolute;border-radius:50%;filter:blur(2px);opacity:.9}.orb.o1{width:400px;height:400px;background:radial-gradient(circle,#dce8ff,transparent 65%);right:40px;top:86px}.orb.o2{width:280px;height:280px;background:radial-gradient(circle,#dbfaff,transparent 65%);left:180px;top:220px}.orb.o3{width:260px;height:260px;background:radial-gradient(circle,#f2e8ff,transparent 65%);right:420px;bottom:44px}
+  .home-hero{position:relative;z-index:2;padding:72px 78px 0;display:grid;grid-template-columns:1.02fr .98fr;gap:62px;align-items:start}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid #dbe5ff;background:#f2f6ff;color:#2f5bff;border-radius:999px;padding:9px 14px;font-weight:800;font-size:13px}
+  h2{font-size:62px;line-height:1.04;letter-spacing:-.06em;margin:24px 0 20px;color:#07122f}.gradient-text{background:linear-gradient(120deg,#2f5bff,#16beca 45%,#7c3aed 90%);-webkit-background-clip:text;color:transparent}
+  .lead{font-size:19px;line-height:1.75;color:#475569;margin:0 0 30px;max-width:650px}
+  .searchbox{background:#fff;border:1px solid #dde6f4;box-shadow:0 26px 70px rgba(47,91,255,.14);height:72px;border-radius:24px;display:flex;align-items:center;padding:0 10px 0 22px;gap:14px;max-width:720px}.searchbox .mag{width:42px;height:42px;border-radius:16px;background:var(--soft-blue);display:grid;place-items:center;color:var(--primary);font-size:20px}.searchbox input{border:0;outline:0;font-size:18px;flex:1;color:#334155}.btn{height:52px;border:0;border-radius:18px;background:linear-gradient(135deg,var(--primary),#10b8ca);color:#fff;font-weight:900;padding:0 24px;font-size:15px;box-shadow:0 14px 30px rgba(47,91,255,.28)}.btn.secondary{background:#101828;box-shadow:none}.btn.ghost{background:#fff;color:#2444d8;border:1px solid #ccd8ff;box-shadow:none}.quick-tags{display:flex;gap:10px;margin:18px 0 30px;flex-wrap:wrap}.entry-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;max-width:680px}.entry{padding:22px;border:1px solid var(--line);border-radius:26px;background:#fff;box-shadow:var(--shadow-card);display:flex;gap:16px;align-items:start}.entry-icon{width:54px;height:54px;border-radius:18px;display:grid;place-items:center;font-size:25px}.entry h3{margin:0 0 8px;font-size:21px;letter-spacing:-.03em}.entry p{margin:0;color:#64748b;line-height:1.55}.entry.program .entry-icon{background:var(--soft-blue)}.entry.case .entry-icon{background:var(--soft-amber)}
+  .home-panel{background:rgba(255,255,255,.82);border:1px solid rgba(219,226,240,.9);border-radius:34px;padding:24px;box-shadow:var(--shadow);position:relative;overflow:hidden}.panel-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.panel-title{font-size:18px;font-weight:900;color:#0f172a}.mini-tabs{display:flex;gap:8px;background:#f1f5f9;border-radius:999px;padding:4px}.mini-tabs span{font-size:12px;font-weight:800;color:#64748b;padding:7px 10px;border-radius:999px}.mini-tabs span.active{background:#fff;color:#2f5bff;box-shadow:0 6px 14px rgba(15,23,42,.08)}.program-card{background:#fff;border:1px solid var(--line);border-radius:24px;padding:18px;margin-bottom:14px;display:grid;grid-template-columns:1fr auto;gap:18px;box-shadow:0 10px 30px rgba(15,23,42,.05)}.program-card h4{margin:6px 0 10px;font-size:20px;letter-spacing:-.03em}.program-card p{margin:0;color:#64748b;line-height:1.5}.score{width:76px;height:76px;border-radius:22px;background:linear-gradient(135deg,#ecf4ff,#e6fffb);display:grid;place-items:center;color:#2f5bff;font-weight:900}.score small{display:block;color:#64748b;font-size:11px}.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}.stat{padding:18px;border-radius:22px;background:linear-gradient(180deg,#f8fbff,#fff);border:1px solid var(--line)}.stat b{font-size:28px;letter-spacing:-.05em}.stat span{display:block;color:#64748b;font-size:13px;margin-top:5px;font-weight:700}.path-card{margin-top:18px;background:#07122f;color:#fff;border-radius:28px;padding:22px;position:relative;overflow:hidden}.path-card:before{content:"";position:absolute;right:-50px;top:-80px;width:230px;height:230px;border-radius:50%;background:rgba(20,184,196,.26)}.path-card h3{margin:0 0 12px;font-size:22px}.path-line{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}.path-step{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:14px;font-size:13px;line-height:1.45;color:#dbeafe}.path-step b{display:block;color:#fff;font-size:14px;margin-bottom:6px}
+  .layout{height:calc(100% - 76px);display:grid;grid-template-columns:300px 1fr;background:#f7faff}.sidebar{border-right:1px solid var(--line);background:#fff;padding:34px 26px 26px}.side-title{font-size:14px;font-weight:900;color:#0f172a;margin:0 0 14px}.filter-block{border-bottom:1px solid var(--line);padding:20px 0}.filter-block:first-child{padding-top:0}.check{display:flex;align-items:center;justify-content:space-between;margin:13px 0;color:#475569;font-weight:700;font-size:14px}.check .box{width:18px;height:18px;border-radius:6px;border:1.7px solid #cbd5e1;background:#fff}.check.on .box{background:var(--primary);border-color:var(--primary);position:relative}.check.on .box:after{content:"✓";position:absolute;color:#fff;font-size:12px;left:3px;top:-1px}.main{padding:34px 38px;overflow:hidden}.page-head{display:flex;justify-content:space-between;align-items:start;margin-bottom:24px}.page-head h2{font-size:34px;line-height:1.16;margin:0 0 8px;letter-spacing:-.04em}.page-head p{margin:0;color:#64748b;font-size:15px}.toolbar{display:flex;gap:12px;align-items:center}.pill-input{height:44px;border:1px solid var(--line);border-radius:16px;background:#fff;padding:0 14px;color:#64748b;font-weight:700;display:flex;align-items:center;gap:8px}.list-grid{display:grid;grid-template-columns:1fr 330px;gap:22px}.results{display:flex;flex-direction:column;gap:16px}.result-card{background:#fff;border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:var(--shadow-card);display:grid;grid-template-columns:1fr 170px;gap:22px}.card-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}.badge{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:900}.badge.blue{background:#edf3ff;color:#2444d8}.badge.green{background:#ecfdf3;color:#16834a}.badge.violet{background:#f4efff;color:#6d28d9}.badge.amber{background:#fff8e7;color:#a76605}.badge.rose{background:#fff1f3;color:#be123c}.result-card h3{margin:0;font-size:24px;letter-spacing:-.03em}.result-card p{margin:0 0 12px;color:#64748b;line-height:1.55}.meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.meta{background:#f8fafc;border:1px solid #edf1f7;border-radius:16px;padding:11px}.meta span{display:block;color:#94a3b8;font-size:11px;font-weight:900;margin-bottom:5px}.meta b{font-size:13px;color:#334155}.card-action{border-left:1px dashed #dbe3ef;padding-left:20px;display:flex;flex-direction:column;justify-content:space-between}.match{font-size:40px;font-weight:900;color:#2f5bff;letter-spacing:-.06em}.match small{font-size:12px;color:#64748b;display:block;letter-spacing:0;margin-top:2px}.side-panel{background:#fff;border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:var(--shadow-card);height:max-content}.side-panel h3{margin:0 0 16px;font-size:20px}.mini-case{border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:12px;background:linear-gradient(180deg,#fff,#fbfdff)}.mini-case b{display:block;font-size:15px;margin-bottom:8px}.mini-case p{margin:0;color:#64748b;font-size:13px;line-height:1.45}.progress{height:8px;background:#edf2f7;border-radius:999px;overflow:hidden;margin-top:14px}.progress i{display:block;height:100%;background:linear-gradient(90deg,#2f5bff,#14b8c4);border-radius:999px}.detail-wrap{height:calc(100% - 76px);background:#f7faff;padding:34px 44px;display:grid;grid-template-columns:1fr 360px;gap:26px;overflow:hidden}.detail-main{display:flex;flex-direction:column;gap:20px}.hero-card{background:#07122f;color:#fff;border-radius:34px;padding:34px;position:relative;overflow:hidden;min-height:245px}.hero-card:before{content:"";position:absolute;right:-80px;top:-100px;width:360px;height:360px;border-radius:50%;background:linear-gradient(135deg,rgba(47,91,255,.6),rgba(20,184,196,.38));}.hero-card .content{position:relative;z-index:2}.crumb{color:#8fb0ff;font-weight:800;font-size:13px;margin-bottom:18px}.hero-card h2{color:#fff;margin:0 0 14px;font-size:44px}.hero-card p{max-width:720px;color:#dbeafe;font-size:16px;line-height:1.7}.hero-metrics{display:flex;gap:12px;margin-top:18px}.hero-metric{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:13px 16px;min-width:124px}.hero-metric span{display:block;color:#93c5fd;font-size:12px;font-weight:800}.hero-metric b{font-size:15px}.info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.info-card{background:#fff;border:1px solid var(--line);border-radius:26px;padding:22px;box-shadow:var(--shadow-card)}.info-card h3{margin:0 0 12px;font-size:18px}.info-list{display:flex;flex-direction:column;gap:10px}.info-item{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #eef2f7;padding-bottom:10px;color:#64748b;font-size:13px}.info-item:last-child{border-bottom:0;padding-bottom:0}.info-item b{color:#0f172a}.timeline-card{background:#fff;border:1px solid var(--line);border-radius:30px;padding:24px;box-shadow:var(--shadow-card)}.timeline-card h3{margin:0 0 20px}.timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.timebox{border-radius:22px;padding:18px;border:1px solid var(--line);background:#fbfdff}.timebox .month{font-size:12px;font-weight:900;color:#2f5bff;margin-bottom:10px}.timebox b{display:block;font-size:16px;margin-bottom:8px}.timebox p{margin:0;color:#64748b;font-size:13px;line-height:1.45}.right-stack{display:flex;flex-direction:column;gap:18px}.summary-card{background:#fff;border:1px solid var(--line);border-radius:30px;padding:24px;box-shadow:var(--shadow-card)}.summary-card h3{margin:0 0 18px}.fit-meter{height:14px;background:#edf2f7;border-radius:999px;overflow:hidden;margin-bottom:18px}.fit-meter i{display:block;height:100%;width:88%;border-radius:999px;background:linear-gradient(90deg,#2f5bff,#10b8ca)}.related-card{border:1px solid var(--line);border-radius:22px;padding:16px;margin-bottom:12px}.related-card b{display:block;margin-bottom:8px}.related-card p{margin:0;color:#64748b;font-size:13px;line-height:1.45}.case-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}.case-card{background:#fff;border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:var(--shadow-card);position:relative;overflow:hidden}.case-card:after{content:"";position:absolute;width:140px;height:140px;border-radius:50%;right:-50px;top:-58px;background:#eef4ff}.case-card h3{position:relative;margin:14px 0 12px;font-size:23px;letter-spacing:-.03em}.case-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.route{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0}.route span{background:#f8fafc;border:1px solid var(--line);border-radius:999px;padding:7px 9px;color:#475569;font-size:12px;font-weight:800}.case-bottom{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #edf2f7;padding-top:14px;margin-top:16px}.case-bottom b{color:#0f172a}.case-bottom span{color:#64748b;font-size:13px}.profile-grid{height:calc(100% - 76px);background:#f7faff;padding:34px 44px;display:grid;grid-template-columns:370px 1fr 340px;gap:22px;overflow:hidden}.profile-card{background:#fff;border:1px solid var(--line);border-radius:30px;padding:26px;box-shadow:var(--shadow-card)}.student-avatar{width:78px;height:78px;border-radius:27px;background:linear-gradient(135deg,#2f5bff,#14b8c4);display:grid;place-items:center;color:#fff;font-size:32px;font-weight:900;margin-bottom:18px}.profile-card h2{font-size:28px;margin:0 0 8px}.profile-card p{color:#64748b;line-height:1.55}.kv{display:flex;justify-content:space-between;padding:13px 0;border-bottom:1px solid #edf2f7;font-size:14px}.kv span{color:#64748b}.kv b{color:#0f172a}.journey{background:#fff;border:1px solid var(--line);border-radius:30px;padding:28px;box-shadow:var(--shadow-card);overflow:hidden}.journey h2{font-size:30px;margin:0 0 18px}.vertical-steps{position:relative;display:flex;flex-direction:column;gap:16px}.vstep{display:grid;grid-template-columns:70px 1fr;gap:18px}.vtime{font-weight:900;color:#2f5bff}.vbox{border:1px solid var(--line);border-radius:22px;padding:18px;background:#fbfdff}.vbox h3{margin:0 0 8px}.vbox p{margin:0;color:#64748b;line-height:1.5}.decision-box{background:#07122f;color:#fff;border-radius:28px;padding:24px;box-shadow:0 18px 50px rgba(7,18,47,.22)}.decision-box h3{margin:0 0 14px}.decision-box p{color:#dbeafe;line-height:1.55}.result-list{display:flex;flex-direction:column;gap:12px}.result-item{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:18px;padding:14px;background:#fff}.dot{width:12px;height:12px;border-radius:50%;background:#22c55e}.dot.wait{background:#f59e0b}.dot.no{background:#94a3b8}.admin-layout{height:calc(100% - 76px);display:grid;grid-template-columns:250px 1fr;background:#f7faff}.admin-nav{background:#07122f;color:#fff;padding:30px 20px}.admin-nav .logo{color:#fff;margin-bottom:28px}.admin-link{height:48px;border-radius:16px;display:flex;align-items:center;gap:12px;color:#cbd5e1;font-weight:800;padding:0 14px;margin-bottom:6px}.admin-link.active{background:rgba(255,255,255,.12);color:#fff}.admin-main{padding:30px}.admin-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}.admin-stat{background:#fff;border:1px solid var(--line);border-radius:26px;padding:22px;box-shadow:var(--shadow-card)}.admin-stat span{color:#64748b;font-weight:800}.admin-stat b{display:block;font-size:34px;letter-spacing:-.05em;margin-top:8px}.management-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:20px}.table-card,.form-card{background:#fff;border:1px solid var(--line);border-radius:30px;padding:24px;box-shadow:var(--shadow-card)}.table-card h3,.form-card h3{margin:0 0 16px}.row{display:grid;grid-template-columns:1.2fr .8fr .65fr .6fr;gap:12px;padding:16px 0;border-bottom:1px solid #edf2f7;align-items:center;font-size:14px}.row.head{color:#94a3b8;font-weight:900;font-size:12px}.row b{font-size:15px}.field{border:1px solid var(--line);background:#f8fafc;border-radius:16px;height:46px;display:flex;align-items:center;padding:0 14px;color:#64748b;font-weight:700;margin-bottom:12px}.textarea{height:104px;align-items:start;padding-top:14px}.draft-block{background:#f8fafc;border:1px dashed #cbd5e1;border-radius:20px;padding:16px;color:#475569;line-height:1.55}.footnote{position:absolute;right:34px;bottom:26px;color:#94a3b8;font-size:12px;font-weight:700}.mobile-note{display:none}
+</style>
+</head>
+<body>
+  <div class="board-header">
+    <div>
+      <h1>活动方案案例库 · 高保真设计稿</h1>
+      <p>基于 MVP 文档：活动库 + 案例库 + 搜索连接层；补充了管理后台视角用于内容维护。</p>
+    </div>
+    <div class="board-meta">
+      <span class="chip primary">Desktop 1440</span><span class="chip green">6 Screens</span><span class="chip amber">MVP Ready</span>
+    </div>
+  </div>
+
+  <section class="frame" id="home">
+    <div class="frame-label">01 / 首页 · 搜索决策入口</div>
+    <div class="topbar">
+      <div class="logo"><div class="logo-mark">A</div>ActivityAtlas</div>
+      <div class="nav"><span class="active">首页</span><span>活动库</span><span>案例库</span><span>智能匹配</span><span>数据管理</span></div>
+      <div class="user"><div class="icon-btn">⌘</div><div class="avatar">J</div></div>
+    </div>
+    <div class="hero-bg"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div></div>
+    <div class="home-hero">
+      <div>
+        <div class="eyebrow">✦ 从活动到案例，反推真实成长路径</div>
+        <h2>把活动方案<br><span class="gradient-text">整理成可决策的案例库</span></h2>
+        <p class="lead">面向顾问、学生与家长的活动策划案例管理网站：检索竞赛、夏校、科研项目，也能查看不同背景学生的真实活动路径与结果。</p>
+        <div class="searchbox"><div class="mag">⌕</div><input value="AI / 商科 / 牛津 / G11 科研"/><button class="btn">搜索活动与案例</button></div>
+        <div class="quick-tags"><span class="chip">热门：RSI</span><span class="chip">AI 竞赛</span><span class="chip">G10-G11 夏校</span><span class="chip">中等背景案例</span></div>
+        <div class="entry-grid">
+          <div class="entry program"><div class="entry-icon">📚</div><div><h3>浏览活动</h3><p>按竞赛 / 夏校 / 科研、学科、年级快速筛选。</p></div></div>
+          <div class="entry case"><div class="entry-icon">🧭</div><div><h3>浏览案例</h3><p>按成绩段、申请方向、活动路径找到相似学生。</p></div></div>
+        </div>
+      </div>
+      <div class="home-panel">
+        <div class="panel-top"><div class="panel-title">推荐活动与匹配案例</div><div class="mini-tabs"><span class="active">全部</span><span>竞赛</span><span>科研</span></div></div>
+        <div class="program-card">
+          <div><div class="card-head"><span class="badge blue">Research Program</span><span class="badge green">G11</span></div><h4>RSI 科学研究暑期项目</h4><p>MIT 校园，6周高强度科研，适合 STEM 顶尖学生。</p></div>
+          <div class="score"><div>96<small>匹配度</small></div></div>
+        </div>
+        <div class="program-card">
+          <div><div class="card-head"><span class="badge amber">Summer School</span><span class="badge violet">综合</span></div><h4>YYGS 耶鲁全球青年学者</h4><p>跨学科课程、全球视野与领导力，适合 G10-G11。</p></div>
+          <div class="score"><div>89<small>热度</small></div></div>
+        </div>
+        <div class="program-card">
+          <div><div class="card-head"><span class="badge green">Online Research</span><span class="badge blue">G10-G12</span></div><h4>Pioneer Academics</h4><p>线上科研论文产出，可与案例路径绑定展示。</p></div>
+          <div class="score"><div>84<small>案例</small></div></div>
+        </div>
+        <div class="stat-row"><div class="stat"><b>50+</b><span>活动资料</span></div><div class="stat"><b>3</b><span>核心分类</span></div><div class="stat"><b>2</b><span>决策路径</span></div></div>
+        <div class="path-card"><h3>案例路径预览</h3><p>相似背景 → 活动组合 → 申请方向 → 结果复盘</p><div class="path-line"><div class="path-step"><b>G10</b>USABO 入门</div><div class="path-step"><b>G11</b>生物科研</div><div class="path-step"><b>夏季</b>JAX 项目</div><div class="path-step"><b>申请</b>BioMed 方向</div></div></div>
+      </div>
+    </div>
+    <div class="footnote">Homepage / Search-first experience</div>
+  </section>
+
+  <section class="frame" id="program-list">
+    <div class="frame-label">02 / 活动列表 · 筛选与对比</div>
+    <div class="topbar">
+      <div class="logo"><div class="logo-mark">A</div>ActivityAtlas</div>
+      <div class="nav"><span>首页</span><span class="active">活动库</span><span>案例库</span><span>智能匹配</span><span>数据管理</span></div>
+      <div class="user"><div class="icon-btn">?</div><button class="btn ghost">新增活动</button></div>
+    </div>
+    <div class="layout">
+      <aside class="sidebar">
+        <h3 class="side-title">筛选条件</h3>
+        <div class="filter-block"><div class="side-title">活动分类</div><div class="check on">竞赛 <span class="box"></span></div><div class="check on">夏校 <span class="box"></span></div><div class="check on">科研 <span class="box"></span></div></div>
+        <div class="filter-block"><div class="side-title">学科方向</div><div class="check on">理科 / STEM <span class="box"></span></div><div class="check">商科 / 经济 <span class="box"></span></div><div class="check">人文社科 <span class="box"></span></div><div class="check">艺术传媒 <span class="box"></span></div></div>
+        <div class="filter-block"><div class="side-title">适合年级</div><div class="check">G9 <span class="box"></span></div><div class="check on">G10 <span class="box"></span></div><div class="check on">G11 <span class="box"></span></div><div class="check">G12 <span class="box"></span></div></div>
+        <div class="filter-block"><div class="side-title">形式与费用</div><div class="check on">线上 <span class="box"></span></div><div class="check on">线下 <span class="box"></span></div><div class="check">免费 / 全额资助 <span class="box"></span></div></div>
+      </aside>
+      <main class="main">
+        <div class="page-head"><div><h2>活动库</h2><p>共检索到 50 个活动，已按「G10-G11 + STEM」排序。</p></div><div class="toolbar"><div class="pill-input">⌕ AI / STEM / Research</div><div class="pill-input">排序：匹配度 ↓</div></div></div>
+        <div class="list-grid">
+          <div class="results">
+            <div class="result-card"><div><div class="card-head"><span class="badge green">Research Program</span><span class="badge blue">MIT</span><span class="badge amber">免费</span></div><h3>RSI 科学研究暑期项目</h3><p>全球高含金量科研项目，适合年级前列、STEM 学术能力极强的 G11 学生。</p><div class="meta-grid"><div class="meta"><span>适合年级</span><b>G11</b></div><div class="meta"><span>方向</span><b>STEM 科研</b></div><div class="meta"><span>形式</span><b>线下 · MIT</b></div></div></div><div class="card-action"><div><div class="match">96<small>匹配案例</small></div><div class="progress"><i style="width:96%"></i></div></div><button class="btn">查看详情</button></div></div>
+            <div class="result-card"><div><div class="card-head"><span class="badge blue">竞赛</span><span class="badge green">G9-G12</span><span class="badge amber">线上</span></div><h3>HiMCM 美国高中数学建模大赛</h3><p>团队完成开放性现实问题建模与英文论文，适合理工、数据科学和经济方向。</p><div class="meta-grid"><div class="meta"><span>报名</span><b>9-11月</b></div><div class="meta"><span>费用</span><b>$100/队</b></div><div class="meta"><span>周期</span><b>14天</b></div></div></div><div class="card-action"><div><div class="match">88<small>匹配案例</small></div><div class="progress"><i style="width:88%"></i></div></div><button class="btn ghost">加入对比</button></div></div>
+            <div class="result-card"><div><div class="card-head"><span class="badge violet">Summer School</span><span class="badge blue">Yale</span><span class="badge green">G10-G11</span></div><h3>YYGS 耶鲁全球青年学者项目</h3><p>跨学科课程、全球议题与领导力训练，可服务人文社科、STEM 与全球事务方向。</p><div class="meta-grid"><div class="meta"><span>活动时间</span><b>6-8月</b></div><div class="meta"><span>费用</span><b>$6.5k-$7.5k</b></div><div class="meta"><span>地点</span><b>New Haven</b></div></div></div><div class="card-action"><div><div class="match">81<small>匹配案例</small></div><div class="progress"><i style="width:81%"></i></div></div><button class="btn ghost">加入对比</button></div></div>
+          </div>
+          <aside class="side-panel"><h3>相关案例速览</h3><div class="mini-case"><b>C-018｜STEM 顶尖型</b><p>G11 国际学校，RSI + 数学竞赛，目标 Engineering。</p></div><div class="mini-case"><b>C-043｜中等背景进阶</b><p>G10 公立国际部，HiMCM + 校内科研，目标 Data Science。</p></div><div class="mini-case"><b>C-071｜人文社科交叉</b><p>YYGS + IEO，目标 Global Affairs / Econ。</p></div><button class="btn secondary" style="width:100%;margin-top:8px">查看全部相关案例</button></aside>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <section class="frame" id="program-detail">
+    <div class="frame-label">03 / 活动详情 · 信息结构与关联案例</div>
+    <div class="topbar"><div class="logo"><div class="logo-mark">A</div>ActivityAtlas</div><div class="nav"><span>首页</span><span class="active">活动库</span><span>案例库</span><span>智能匹配</span><span>数据管理</span></div><div class="user"><button class="btn ghost">收藏活动</button><button class="btn">匹配案例</button></div></div>
+    <div class="detail-wrap">
+      <div class="detail-main">
+        <div class="hero-card"><div class="content"><div class="crumb">活动库 / Research Program / STEM</div><h2>RSI 科学研究暑期项目</h2><p>MIT 校园 6 周高强度科研项目，先进行 STEM 前沿课程，再在导师指导下完成独立研究与学术展示。</p><div class="hero-metrics"><div class="hero-metric"><span>适合年级</span><b>G11</b></div><div class="hero-metric"><span>费用</span><b>免费 / 全额资助</b></div><div class="hero-metric"><span>形式</span><b>线下 · Cambridge</b></div><div class="hero-metric"><span>匹配案例</span><b>12 个</b></div></div></div></div>
+        <div class="info-grid"><div class="info-card"><h3>基本信息</h3><div class="info-list"><div class="info-item"><span>类型</span><b>Summer / Research</b></div><div class="info-item"><span>主办方</span><b>CEE + MIT</b></div><div class="info-item"><span>官网</span><b>cee.org</b></div></div></div><div class="info-card"><h3>学生条件</h3><div class="info-list"><div class="info-item"><span>年级</span><b>G11</b></div><div class="info-item"><span>方向</span><b>STEM</b></div><div class="info-item"><span>材料</span><b>成绩/推荐/文书</b></div></div></div><div class="info-card"><h3>内容亮点</h3><div class="info-list"><div class="info-item"><span>科研</span><b>导师制项目</b></div><div class="info-item"><span>展示</span><b>学术会议</b></div><div class="info-item"><span>强度</span><b>顶尖难度</b></div></div></div></div>
+        <div class="timeline-card"><h3>申请与活动节奏</h3><div class="timeline"><div class="timebox"><div class="month">10月</div><b>开放申请</b><p>整理成绩单、标化、活动列表和推荐人。</p></div><div class="timebox"><div class="month">12月</div><b>截止提交</b><p>完成申请文书与推荐信确认。</p></div><div class="timebox"><div class="month">6月</div><b>项目开始</b><p>STEM 课程与研究方向匹配。</p></div><div class="timebox"><div class="month">8月</div><b>成果展示</b><p>完成论文、口头报告和项目复盘。</p></div></div></div>
+      </div>
+      <aside class="right-stack"><div class="summary-card"><h3>适配度分析</h3><div class="fit-meter"><i></i></div><p style="color:#64748b;line-height:1.55">适合成绩强、已有科研/竞赛积累、目标 STEM 顶尖申请的学生。若背景中等，可先通过校内科研、数学建模或线上科研铺垫。</p><button class="btn" style="width:100%;margin-top:10px">生成活动方案</button></div><div class="summary-card"><h3>相关案例推荐</h3><div class="related-card"><span class="badge blue">顶尖</span><b>C-018｜物理 + 数学竞赛路径</b><p>RSI + HMMT + 校内科研，申请 Engineering。</p></div><div class="related-card"><span class="badge amber">中等</span><b>C-043｜数据科学进阶路径</b><p>HiMCM + Pioneer 论文，下一步冲刺 RSI。</p></div><div class="related-card"><span class="badge green">普通</span><b>C-096｜晚启动科研补强</b><p>线上科研 + 校内社团，结果更适合文理学院。</p></div></div></aside>
+    </div>
+  </section>
+
+  <section class="frame" id="case-list">
+    <div class="frame-label">04 / 案例列表 · 全分段真实路径</div>
+    <div class="topbar"><div class="logo"><div class="logo-mark">A</div>ActivityAtlas</div><div class="nav"><span>首页</span><span>活动库</span><span class="active">案例库</span><span>智能匹配</span><span>数据管理</span></div><div class="user"><div class="pill-input">⌕ 搜索案例</div><button class="btn ghost">新增案例</button></div></div>
+    <div class="layout">
+      <aside class="sidebar"><h3 class="side-title">案例筛选</h3><div class="filter-block"><div class="side-title">成绩区间</div><div class="check on">顶尖：A-/A 以上 <span class="box"></span></div><div class="check on">中等：B+/A- <span class="box"></span></div><div class="check on">普通：B/B+ <span class="box"></span></div></div><div class="filter-block"><div class="side-title">申请方向</div><div class="check on">STEM / 工程 <span class="box"></span></div><div class="check">商科 / 经济 <span class="box"></span></div><div class="check">人文社科 <span class="box"></span></div><div class="check">艺术传媒 <span class="box"></span></div></div><div class="filter-block"><div class="side-title">活动类型</div><div class="check on">竞赛 <span class="box"></span></div><div class="check on">夏校 <span class="box"></span></div><div class="check on">科研项目 <span class="box"></span></div></div></aside>
+      <main class="main"><div class="page-head"><div><h2>案例库</h2><p>不是只看成功故事，而是比较不同背景、路径和结果。</p></div><div class="toolbar"><span class="chip primary">真实路径</span><span class="chip amber">匿名展示</span><span class="chip green">活动可回链</span></div></div>
+        <div class="case-grid">
+          <div class="case-card"><span class="badge blue">顶尖分段</span><h3>C-018｜G11 国际学校 STEM 冲刺</h3><div class="case-meta"><span class="chip">GPA A/A-</span><span class="chip">工程</span><span class="chip">线下科研</span></div><p style="color:#64748b">已有数学竞赛基础，通过 RSI 与校内科研强化研究叙事。</p><div class="route"><span>HMMT</span>→<span>RSI</span>→<span>独立研究</span></div><div class="case-bottom"><div><b>结果：Top 20 工程方向</b><span> 活动路径强相关</span></div><button class="btn ghost">详情</button></div></div>
+          <div class="case-card"><span class="badge amber">中等分段</span><h3>C-043｜公立国际部 Data Science 路径</h3><div class="case-meta"><span class="chip">GPA B+/A-</span><span class="chip">数据科学</span><span class="chip">线上+竞赛</span></div><p style="color:#64748b">没有顶尖夏校，依靠 HiMCM 与线上科研形成可解释的成长线。</p><div class="route"><span>HiMCM</span>→<span>Pioneer</span>→<span>校内项目</span></div><div class="case-bottom"><div><b>结果：匹配校录取</b><span> 路径可复制</span></div><button class="btn ghost">详情</button></div></div>
+          <div class="case-card"><span class="badge green">普通分段</span><h3>C-096｜G10 晚启动生物方向</h3><div class="case-meta"><span class="chip">GPA B/B+</span><span class="chip">BioMed</span><span class="chip">补强型</span></div><p style="color:#64748b">先用 USABO 入门，再通过线上科研和校内社团补足学术兴趣证明。</p><div class="route"><span>USABO</span>→<span>Lumiere</span>→<span>校内社团</span></div><div class="case-bottom"><div><b>结果：方向明确</b><span> 冲刺空间清晰</span></div><button class="btn ghost">详情</button></div></div>
+          <div class="case-card"><span class="badge violet">人文社科</span><h3>C-071｜全球事务 + 经济学组合</h3><div class="case-meta"><span class="chip">GPA A-</span><span class="chip">Econ / IR</span><span class="chip">夏校+竞赛</span></div><p style="color:#64748b">通过 YYGS 与 IEO 形成全球议题、经济学与表达能力的复合画像。</p><div class="route"><span>IEO</span>→<span>YYGS</span>→<span>政策写作</span></div><div class="case-bottom"><div><b>结果：Econ/IR 录取</b><span> 叙事完整</span></div><button class="btn ghost">详情</button></div></div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <section class="frame" id="case-detail">
+    <div class="frame-label">05 / 案例详情 · 背景、路径、结果复盘</div>
+    <div class="topbar"><div class="logo"><div class="logo-mark">A</div>ActivityAtlas</div><div class="nav"><span>首页</span><span>活动库</span><span class="active">案例库</span><span>智能匹配</span><span>数据管理</span></div><div class="user"><button class="btn ghost">导出方案</button><button class="btn">复制路径</button></div></div>
+    <div class="profile-grid">
+      <aside class="profile-card"><div class="student-avatar">C</div><span class="badge amber">中等分段 · 匿名案例</span><h2>C-043｜Data Science 进阶路径</h2><p>公立国际部学生，起点不是顶尖竞赛型，但通过可持续项目组合建立数据科学方向。</p><div class="kv"><span>年级</span><b>G10 → G11</b></div><div class="kv"><span>学校类型</span><b>公立国际部</b></div><div class="kv"><span>成绩范围</span><b>B+ / A-</b></div><div class="kv"><span>目标方向</span><b>Data Science</b></div><div class="kv"><span>活动类型</span><b>竞赛 + 科研</b></div></aside>
+      <main class="journey"><h2>活动路径与决策逻辑</h2><div class="vertical-steps"><div class="vstep"><div class="vtime">G10 秋</div><div class="vbox"><h3>确定方向：数学 + 数据</h3><p>先用校内数据分析项目验证兴趣，避免一开始就冲刺高门槛科研。</p></div></div><div class="vstep"><div class="vtime">G10 冬</div><div class="vbox"><h3>HiMCM 数学建模</h3><p>建立团队合作、建模、论文写作能力，形成可展示的英文产出。</p></div></div><div class="vstep"><div class="vtime">G11 春</div><div class="vbox"><h3>Pioneer / 线上科研</h3><p>在导师指导下产出研究论文，把竞赛能力转化为学术叙事。</p></div></div><div class="vstep"><div class="vtime">G11 夏</div><div class="vbox"><h3>校内项目延展</h3><p>结合本地数据或公益议题做应用项目，增强个人独特性。</p></div></div></div></main>
+      <aside class="right-stack"><div class="decision-box"><h3>个人总结</h3><p>该路径的重点不是堆砌高含金量活动，而是让每一步都解释“为什么选择数据科学”。</p></div><div class="summary-card"><h3>录取结果</h3><div class="result-list"><div class="result-item"><span class="dot"></span><div><b>匹配校 Data Science</b><br><span style="color:#64748b">录取</span></div></div><div class="result-item"><span class="dot wait"></span><div><b>冲刺校 Waitlist</b><br><span style="color:#64748b">活动深度仍不足</span></div></div><div class="result-item"><span class="dot no"></span><div><b>顶尖 CS 方向</b><br><span style="color:#64748b">不建议强行包装</span></div></div></div></div><div class="summary-card"><h3>关联活动</h3><div class="related-card"><b>HiMCM</b><p>适合建立建模与论文写作基础。</p></div><div class="related-card"><b>Pioneer Academics</b><p>适合补足线上科研与论文产出。</p></div></div></aside>
+    </div>
+  </section>
+
+  <section class="frame" id="admin">
+    <div class="frame-label">06 / 内容管理 · 活动与案例维护</div>
+    <div class="topbar"><div class="logo"><div class="logo-mark">A</div>ActivityAtlas</div><div class="nav"><span>首页</span><span>活动库</span><span>案例库</span><span>智能匹配</span><span class="active">数据管理</span></div><div class="user"><div class="icon-btn">🔔</div><div class="avatar">M</div></div></div>
+    <div class="admin-layout"><aside class="admin-nav"><div class="logo"><div class="logo-mark">A</div>Admin</div><div class="admin-link active">▦ 总览</div><div class="admin-link">📚 活动资料</div><div class="admin-link">🧭 案例资料</div><div class="admin-link">🔗 关联规则</div><div class="admin-link">✓ 审核队列</div><div class="admin-link">⚙ 字段配置</div></aside>
+      <main class="admin-main"><div class="page-head"><div><h2>数据管理台</h2><p>维护活动字段、案例路径与“活动 ↔ 案例”关联关系。</p></div><button class="btn">发布更新</button></div><div class="admin-stats"><div class="admin-stat"><span>活动资料</span><b>50</b></div><div class="admin-stat"><span>案例资料</span><b>128</b></div><div class="admin-stat"><span>待补字段</span><b>17</b></div><div class="admin-stat"><span>已关联</span><b>82%</b></div></div><div class="management-grid"><div class="table-card"><h3>最近更新活动</h3><div class="row head"><span>名称</span><span>类型</span><span>完整度</span><span>状态</span></div><div class="row"><b>RSI 科学研究暑期项目</b><span>Research</span><span>98%</span><span class="badge green">已发布</span></div><div class="row"><b>YYGS 耶鲁全球青年学者</b><span>Summer</span><span>91%</span><span class="badge green">已发布</span></div><div class="row"><b>IOAI 国际人工智能奥林匹克</b><span>竞赛</span><span>76%</span><span class="badge amber">待核验</span></div><div class="row"><b>UCSB RMP 研究导师计划</b><span>Research</span><span>88%</span><span class="badge blue">草稿</span></div><div class="row"><b>Sciences Po Summer School</b><span>Summer</span><span>84%</span><span class="badge amber">待补充</span></div></div><div class="form-card"><h3>快速录入案例</h3><div class="field">年级：G10 / G11 / G12</div><div class="field">学校类型：国际 / 公立 / 其他</div><div class="field">成绩区间：顶尖 / 中等 / 普通</div><div class="field">关联活动：HiMCM, Pioneer...</div><div class="field textarea">个人总结：真实路径、关键决策、结果复盘...</div><div class="draft-block"><b>系统建议</b><br>该案例可关联「数学建模」「线上科研」「数据科学」标签，并推荐到 HiMCM 活动详情页。</div><button class="btn" style="width:100%;margin-top:16px">保存为草稿</button></div></div></main>
+    </div>
+  </section>
+</body>
+</html>

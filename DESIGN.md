@@ -1,13 +1,13 @@
 # DESIGN.md
 
-> Opportunity Atlas should feel like a quiet education SaaS tool: trustworthy, structured, and easy to scan.
+> Opportunity Atlas follows the supplied high-fidelity HTML design language while keeping the MVP scope narrow: activity library, case library, admin-only data management, and no smart matching.
 
 ## 1. Visual Theme & Atmosphere
 
-**Style**: Clean education SaaS dashboard  
-**Keywords**: trustworthy, structured, calm, editorial, data-aware, restrained, navigable  
-**Tone**: professional and focused — NOT decorative, over-animated, or marketing-heavy  
-**Feel**: a well-organized admissions research atlas with clear paths and reliable records.
+**Style**: High-fidelity education SaaS workspace  
+**Keywords**: bright, structured, atlas-like, data-aware, credible, rounded, layered  
+**Tone**: professional and polished, with the visual density of `activity_case_hifi_design.html`  
+**Feel**: a 1440px desktop-first planning board with white surfaces, blue navigation, large rounded panels, deep navy hero blocks, and clear activity/case relationship paths.
 
 **Interaction Tier**: L1 精致静态  
 **Dependencies**: CSS only
@@ -16,29 +16,31 @@
 
 ```css
 :root {
-  --color-bg-page: 218 43% 97%;
+  --color-bg-page: 218 55% 96%;
   --color-bg-surface: 0 0% 100%;
-  --color-bg-soft: 214 50% 98%;
-  --color-bg-hover: 218 60% 96%;
+  --color-bg-soft: 216 72% 98%;
+  --color-bg-hover: 218 86% 96%;
   --color-border: 215 28% 88%;
   --color-border-hover: 221 83% 70%;
   --color-text-main: 222 47% 11%;
   --color-text-secondary: 215 20% 38%;
   --color-text-muted: 215 16% 58%;
-  --color-primary: 221 83% 53%;
-  --color-cyan: 188 86% 43%;
+  --color-primary: 230 100% 59%;
+  --color-cyan: 186 81% 43%;
   --color-success: 160 84% 39%;
   --color-warning: 38 92% 50%;
   --color-danger: 0 84% 60%;
   --color-navy: 224 64% 14%;
-  --color-bg-page-rgb: 242, 246, 252;
-  --color-primary-rgb: 37, 99, 235;
+  --color-violet: 262 83% 58%;
+  --color-bg-page-rgb: 238, 243, 251;
+  --color-primary-rgb: 47, 91, 255;
 }
 ```
 
 **Color Rules:**
 - All UI colors must reference CSS variables or Tailwind tokens derived from them.
-- Use blue only for navigation, links, primary actions, and selected states.
+- Use blue for navigation, links, primary actions, selected states, and relation indicators.
+- Use cyan only as part of the primary gradient or small data accents.
 - Admin surfaces may use navy for orientation, but content panels remain white.
 
 ## 3. Typography Rules
@@ -50,8 +52,8 @@
 
 | Role | Font | Size | Weight | Line Height | Letter Spacing |
 |---|---|---:|---:|---:|---:|
-| Hero H1 | Noto Sans SC / Inter | 56px | 800 | 1.05 | 0 |
-| Page H1 | Noto Sans SC / Inter | 32px | 800 | 1.2 | 0 |
+| Hero H1 | Noto Sans SC / Inter | 56-64px | 900 | 1.05 | 0 |
+| Page H1 | Noto Sans SC / Inter | 32-36px | 900 | 1.16 | 0 |
 | Section H2 | Noto Sans SC / Inter | 24px | 700 | 1.3 | 0 |
 | H3 | Noto Sans SC / Inter | 18px | 700 | 1.4 | 0 |
 | Body | Noto Sans SC / Inter | 15px | 400 | 1.75 | 0.02em |
@@ -59,12 +61,12 @@
 | Table | Noto Sans SC / Inter | 14px | 500 | 1.6 | 0 |
 
 **Typography Rules:**
-- Keep dashboard and card headings compact; reserve hero-scale type for the home brand.
+- Keep dashboard and card headings compact; reserve hero-scale type for the home brand and dark detail heroes.
 - Chinese body text uses line-height >= 1.7 and includes a Chinese font before Inter.
 - **NEVER use**: cursive novelty fonts, condensed display fonts, or negative letter spacing.
 
 **Text Decoration:**
-- Hero h1: no gradient and no shadow; brand clarity is the point.
+- Home hero can use the supplied blue/cyan/violet title gradient for the second line only.
 - Section headings: plain ink color.
 - Links: subtle underline on hover only.
 
@@ -74,9 +76,9 @@
 ```css
 .btn {
   border-radius: var(--radius-sm);
-  min-height: 40px;
-  padding: 0 16px;
-  font-weight: 700;
+  min-height: 48px;
+  padding: 0 20px;
+  font-weight: 800;
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
 }
 .btn:hover { transform: translateY(-1px); }
@@ -90,7 +92,7 @@
 .card {
   background: hsl(var(--color-bg-surface));
   border: 1px solid hsl(var(--color-border));
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
 }
 .card:hover { border-color: hsl(var(--color-border-hover) / 0.55); }
@@ -149,19 +151,20 @@
 ## 5. Layout Principles
 
 **Container:**
-- Max width: 1180px
-- Padding: 24px desktop, 16px mobile
-- Admin content max width: none, with dense tables and panels
+- Max width: 1440px
+- Padding: 32px desktop, 16px mobile
+- Public list pages use a large white rounded board with left filters and a soft-blue content area.
+- Admin uses a dark navy sidebar with dense white data panels.
 
 **Spacing Scale:**
-- Section padding: 56px desktop, 32px mobile
+- Section padding: 64px desktop, 32px mobile
 - Component gap: 16px to 24px
 - Card internal padding: 20px to 28px
 
 **Grid:**
 ```css
-.content-grid { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 24px; }
-.detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; }
+.content-grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 26px; }
+.detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 26px; }
 ```
 
 ## 6. Depth & Elevation
@@ -169,8 +172,8 @@
 | Level | Treatment | Use |
 |---|---|---|
 | Flat | no shadow, thin border | filters, form controls |
-| Subtle | `0 8px 24px hsl(222 47% 11% / 0.06)` | list cards |
-| Elevated | `0 18px 48px hsl(222 47% 11% / 0.1)` | hero, admin panels |
+| Subtle | `0 14px 42px hsl(224 65% 10% / 0.08)` | list cards |
+| Elevated | `0 28px 80px hsl(224 65% 10% / 0.13)` | hero, admin panels |
 
 ## 7. Animation & Interaction
 
@@ -211,7 +214,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 ```
 
 ### Special Effects
-Use only `opacity` and `transform` entrance animation on first render.
+Use only `opacity` and `transform` entrance animation on first render. Avoid decorative moving backgrounds.
 
 ### Reduced Motion
 ```css
@@ -229,6 +232,8 @@ Use only `opacity` and `transform` entrance animation on first render.
 
 ### Do
 - Keep public pages scannable with clear filters and concise record cards.
+- Match the high-fidelity structure: centered topbar, selected underline, white boards, left filter column, right related-content panel.
+- Use "related cases", "participated activities", and "linked activities" language for relationships.
 - Use anonymous case identifiers everywhere.
 - Make admin pages dense but legible.
 - Prefer text links and compact buttons over oversized CTAs.
@@ -238,6 +243,7 @@ Use only `opacity` and `transform` entrance animation on first render.
 - Do not include smart matching, AI analysis, recommendation scores, or `/match`.
 - Do not use nested cards inside cards.
 - Do not use decorative gradient blobs or orbs.
+- Do not copy the old high-fidelity content labels for smart matching, matching score, or AI recommendations.
 - Do not use the existing watermarked `logo.png` directly in production UI.
 - Do not expose real student names, contact information, or precise schools.
 - Do not make the home page a marketing landing page.
@@ -264,4 +270,3 @@ Use only `opacity` and `transform` entrance animation on first render.
   }
 }
 ```
-

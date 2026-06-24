@@ -13,17 +13,17 @@ export function SiteHeader() {
   const items = visibleNavItems(role);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur">
-      <div className="mx-auto flex min-h-[72px] max-w-[1180px] flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 border-b border-border/80 bg-surface/90 backdrop-blur-md">
+      <div className="mx-auto grid min-h-[76px] max-w-[1440px] grid-cols-1 items-center gap-4 px-5 py-3 md:grid-cols-[1fr_auto_1fr] md:px-9">
         <Link className="flex min-h-11 items-center gap-3 rounded-sm" href="/">
-          <span className="flex h-10 w-10 items-center justify-center rounded-sm border border-border bg-soft text-primary">
+          <span className="flex h-10 w-10 items-center justify-center rounded-sm bg-[image:var(--gradient-primary)] text-white shadow-card">
             <LogoMark className="h-7 w-7" />
           </span>
-          <span className="text-lg font-extrabold tracking-normal text-ink">
+          <span className="text-xl font-black tracking-normal text-ink">
             Opportunity Atlas
           </span>
         </Link>
-        <nav aria-label="Primary navigation" className="flex flex-wrap items-center gap-2">
+        <nav aria-label="Primary navigation" className="flex flex-wrap items-center justify-start gap-3 md:justify-center md:gap-6">
           {items.map((item) => {
             const active =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -31,8 +31,9 @@ export function SiteHeader() {
               <Link
                 aria-current={active ? "page" : undefined}
                 className={cx(
-                  "flex min-h-11 items-center rounded-sm px-3 text-sm font-bold text-secondary hover:bg-soft hover:text-primary",
-                  active && "bg-soft text-primary"
+                  "relative flex min-h-11 items-center rounded-sm px-2 text-[15px] font-black text-secondary hover:text-primary",
+                  active &&
+                    "text-primary after:absolute after:bottom-0 after:left-2 after:right-2 after:h-[3px] after:rounded-full after:bg-primary"
                 )}
                 data-active={active}
                 href={item.href}
@@ -43,11 +44,11 @@ export function SiteHeader() {
             );
           })}
         </nav>
-        <label className="flex min-h-11 items-center gap-2 rounded-sm border border-border bg-surface px-3 text-sm font-bold text-secondary">
-          <span>角色</span>
+        <label className="flex min-h-11 items-center justify-self-start rounded-sm border border-border bg-surface px-3 text-sm font-bold text-secondary shadow-card md:justify-self-end">
+          <span className="sr-only">角色</span>
           <select
             aria-label="切换角色"
-            className="rounded-sm border border-border bg-soft px-2 py-1 text-sm font-bold text-ink"
+            className="rounded-sm border-0 bg-transparent px-2 py-1 text-sm font-black text-ink"
             onChange={(event) => setRole(event.target.value === "admin" ? "admin" : "viewer")}
             value={role}
           >
@@ -59,4 +60,3 @@ export function SiteHeader() {
     </header>
   );
 }
-

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { Badge, Card, PageHeading, TextLink } from "@/components/ui";
 import { mockImportJobs, mockReviewRecords, mockTags } from "@/lib/mock/admin";
@@ -141,7 +140,7 @@ export function AdminReviewPage() {
   return (
     <div>
       <PageHeading
-        description="审核 AI 或人工录入后的结构化资料，确认后发布到前台。"
+        description="审核自动解析或人工录入后的结构化资料，确认后发布到前台。"
         eyebrow="Admin"
         title="审核发布"
       />

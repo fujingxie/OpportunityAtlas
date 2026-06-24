@@ -4,7 +4,7 @@ import { cx } from "@/lib/utils";
 
 export function PageShell({ children }: { children: ReactNode }) {
   return (
-    <main className="mx-auto max-w-[1180px] px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-9">
       {children}
     </main>
   );
@@ -29,7 +29,7 @@ export function PageHeading({
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-ink">
+        <h1 className="mt-2 text-[34px] font-black leading-tight tracking-normal text-ink">
           {title}
         </h1>
         {description ? (
@@ -53,7 +53,7 @@ export function Card({
   return (
     <section
       className={cx(
-        "rounded-md border border-border bg-surface p-5 shadow-card",
+        "rounded-lg border border-border bg-surface p-6 shadow-card",
         className
       )}
     >
@@ -80,7 +80,7 @@ export function Badge({
   return (
     <span
       className={cx(
-        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-extrabold",
+        "inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-black",
         tones[tone]
       )}
     >
@@ -117,4 +117,3 @@ export function EmptyState({
     </div>
   );
 }
-

@@ -11,9 +11,6 @@ const schoolTypes = ["all", "international", "public", "other"];
 const activityTypes = ["all", "Competition", "Summer School", "Research Program"];
 const resultTiers = ["all", "Top 20", "Top 30", "Selective", "Matched", "Developing", "Portfolio"];
 
-const selectClass =
-  "min-h-11 rounded-sm border border-border bg-surface px-3 text-sm font-bold text-ink hover:border-primary focus:border-primary";
-
 export function CaseDirectory() {
   const [q, setQ] = useState("");
   const [grade, setGrade] = useState("all");
@@ -27,24 +24,24 @@ export function CaseDirectory() {
   );
 
   return (
-    <div className="content-grid">
-      <aside className="rounded-md border border-border bg-surface p-4 shadow-card">
-        <h2 className="text-base font-extrabold tracking-normal text-ink">案例筛选</h2>
-        <div className="mt-4 space-y-4">
-          <FilterSelect label="年级" onChange={setGrade} options={grades} value={grade} />
-          <FilterSelect
+    <div className="grid gap-0 overflow-hidden rounded-[34px] border border-border bg-surface shadow-panel lg:grid-cols-[300px_1fr]">
+      <aside className="border-b border-border bg-surface p-7 lg:border-b-0 lg:border-r">
+        <h2 className="text-base font-black tracking-normal text-ink">案例筛选</h2>
+        <div className="mt-6 space-y-7">
+          <FilterGroup label="年级" onChange={setGrade} options={grades} value={grade} />
+          <FilterGroup
             label="学校类型"
             onChange={setSchoolType}
             options={schoolTypes}
             value={schoolType}
           />
-          <FilterSelect
+          <FilterGroup
             label="活动类型"
             onChange={setActivityType}
             options={activityTypes}
             value={activityType}
           />
-          <FilterSelect
+          <FilterGroup
             label="结果层级"
             onChange={setResultTier}
             options={resultTiers}
@@ -53,25 +50,30 @@ export function CaseDirectory() {
         </div>
       </aside>
 
-      <section>
-        <div className="mb-4 rounded-md border border-border bg-surface p-4 shadow-card">
-          <label className="block text-sm font-extrabold text-ink" htmlFor="case-search">
-            搜索案例
+      <section className="bg-soft p-6 lg:p-9">
+        <div className="mb-7 flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
+          <div>
+            <h2 className="text-[34px] font-black leading-tight tracking-normal text-ink">
+              案例库
+            </h2>
+            <p className="mt-2 text-sm font-bold leading-7 text-secondary">
+              不是只看成功故事，而是比较不同背景、路径和结果。
+            </p>
+          </div>
+          <label className="flex min-h-12 items-center gap-2 rounded-sm border border-border bg-surface px-4 text-sm font-black text-secondary shadow-card">
+            <span>⌕</span>
+            <input
+              className="w-[240px] border-0 bg-transparent text-sm font-bold text-ink outline-none placeholder:text-muted"
+              id="case-search"
+              onChange={(event) => setQ(event.target.value)}
+              placeholder="搜索案例"
+              value={q}
+            />
           </label>
-          <input
-            className="mt-2 min-h-11 w-full rounded-sm border border-border bg-soft px-3 text-sm text-ink hover:border-primary focus:border-primary"
-            id="case-search"
-            onChange={(event) => setQ(event.target.value)}
-            placeholder="输入匿名编号、专业方向、活动或结果关键词"
-            value={q}
-          />
-          <p className="mt-3 text-sm leading-7 text-secondary">
-            案例默认匿名展示，包含不同背景层级和结果复盘。
-          </p>
         </div>
 
         {cases.length ? (
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-5 xl:grid-cols-2">
             {cases.map((studentCase) => (
               <CaseCardItem key={studentCase.id} studentCase={studentCase} />
             ))}
@@ -87,7 +89,7 @@ export function CaseDirectory() {
   );
 }
 
-function FilterSelect({
+function FilterGroup({
   label,
   options,
   value,
@@ -99,22 +101,33 @@ function FilterSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="block">
-      <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-muted">
-        {label}
-      </span>
-      <select
-        className={`${selectClass} mt-2 w-full`}
-        onChange={(event) => onChange(event.target.value)}
-        value={value}
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option === "all" ? "全部" : option}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
+      <h3 className="text-sm font-black tracking-normal text-ink">{label}</h3>
+      <div className="mt-3 space-y-2">
+        {options.map((option) => {
+          const active = value === option;
+          return (
+            <button
+              className="flex min-h-9 w-full items-center justify-between rounded-sm px-1 text-left text-sm font-black text-secondary hover:text-primary"
+              key={option}
+              onClick={() => onChange(option)}
+              type="button"
+            >
+              <span>{option === "all" ? "全部" : option}</span>
+              <span
+                className={`grid h-5 w-5 place-items-center rounded-[6px] border text-[11px] ${
+                  active
+                    ? "border-primary bg-primary text-white"
+                    : "border-border bg-surface text-transparent"
+                }`}
+              >
+                ✓
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -122,13 +135,13 @@ function CaseCardItem({ studentCase }: { studentCase: StudentCase }) {
   const relatedPrograms = getRelatedPrograms(studentCase);
 
   return (
-    <Card>
+    <Card className="relative overflow-hidden rounded-[28px] p-7">
       <div className="flex flex-wrap gap-2">
         <Badge tone="amber">{studentCase.gpaRange}</Badge>
         <Badge>{studentCase.grade}</Badge>
         <Badge>{studentCase.schoolType}</Badge>
       </div>
-      <h2 className="mt-4 text-xl font-extrabold tracking-normal text-ink">
+      <h2 className="mt-4 text-2xl font-black tracking-normal text-ink">
         <Link className="hover:text-primary" href={`/cases/${studentCase.id}`}>
           {studentCase.anonymousCode}｜{studentCase.intendedMajor}
         </Link>
@@ -141,8 +154,8 @@ function CaseCardItem({ studentCase }: { studentCase: StudentCase }) {
           <Badge key={tag}>{tag}</Badge>
         ))}
       </div>
-      <div className="mt-5 rounded-sm border border-border bg-soft p-4">
-        <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-muted">
+      <div className="mt-5 rounded-md border border-border bg-soft p-4">
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-muted">
           活动路径
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold text-secondary">
@@ -155,9 +168,9 @@ function CaseCardItem({ studentCase }: { studentCase: StudentCase }) {
         </div>
       </div>
       <div className="mt-5 flex items-center justify-between gap-4 border-t border-border pt-4">
-        <p className="text-sm font-bold text-ink">{studentCase.resultSummary}</p>
+        <p className="text-sm font-black text-ink">{studentCase.resultSummary}</p>
         <Link
-          className="shrink-0 rounded-sm border border-border px-3 py-2 text-sm font-bold text-primary hover:border-primary"
+          className="shrink-0 rounded-sm border border-border bg-surface px-4 py-3 text-sm font-black text-primary hover:border-primary"
           href={`/cases/${studentCase.id}`}
         >
           详情
@@ -166,4 +179,3 @@ function CaseCardItem({ studentCase }: { studentCase: StudentCase }) {
     </Card>
   );
 }
-

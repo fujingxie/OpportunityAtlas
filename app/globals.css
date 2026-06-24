@@ -7,27 +7,32 @@
 :root {
   --font-sans: "Noto Sans SC", "Inter", system-ui, sans-serif;
 
-  --color-bg-page: 218 43% 97%;
+  --color-bg-page: 218 55% 96%;
   --color-bg-surface: 0 0% 100%;
-  --color-bg-soft: 214 50% 98%;
-  --color-bg-hover: 218 60% 96%;
+  --color-bg-soft: 216 72% 98%;
+  --color-bg-hover: 218 86% 96%;
   --color-border: 215 28% 88%;
   --color-border-hover: 221 83% 70%;
-  --color-text-main: 222 47% 11%;
+  --color-text-main: 224 65% 10%;
   --color-text-secondary: 215 20% 38%;
   --color-text-muted: 215 16% 58%;
-  --color-primary: 221 83% 53%;
-  --color-cyan: 188 86% 43%;
+  --color-primary: 230 100% 59%;
+  --color-cyan: 186 81% 43%;
   --color-success: 160 84% 39%;
   --color-warning: 38 92% 50%;
   --color-danger: 0 84% 60%;
   --color-navy: 224 64% 14%;
+  --color-violet: 262 83% 58%;
+  --color-amber-soft: 43 100% 95%;
+  --color-blue-soft: 220 100% 97%;
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --shadow-card: 0 8px 24px hsl(var(--color-text-main) / 0.06);
-  --shadow-panel: 0 18px 48px hsl(var(--color-text-main) / 0.1);
+  --radius-sm: 14px;
+  --radius-md: 22px;
+  --radius-lg: 30px;
+  --shadow-card: 0 14px 42px hsl(var(--color-text-main) / 0.08);
+  --shadow-panel: 0 28px 80px hsl(var(--color-text-main) / 0.13);
+  --gradient-primary: linear-gradient(135deg, hsl(var(--color-primary)), hsl(var(--color-cyan)));
+  --gradient-title: linear-gradient(120deg, hsl(var(--color-primary)), hsl(var(--color-cyan)) 48%, hsl(var(--color-violet)));
 }
 
 * {
@@ -40,7 +45,9 @@ html {
 
 body {
   margin: 0;
-  background: hsl(var(--color-bg-page));
+  background:
+    linear-gradient(180deg, hsl(var(--color-bg-page)), hsl(var(--color-bg-soft)) 44%, hsl(var(--color-bg-page))),
+    hsl(var(--color-bg-page));
   color: hsl(var(--color-text-main));
   font-family: var(--font-sans);
   letter-spacing: 0.02em;
@@ -95,14 +102,14 @@ select:focus-visible {
 
 .content-grid {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 26px;
 }
 
 .detail-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 26px;
 }
 
 .table-scroll {
@@ -116,6 +123,12 @@ select:focus-visible {
   }
 }
 
+@media (max-width: 720px) {
+  body {
+    letter-spacing: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -126,4 +139,3 @@ select:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
-

@@ -17,13 +17,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <main className="min-h-[calc(100vh-73px)] bg-page px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-[1280px] gap-6 lg:grid-cols-[240px_1fr]">
-        <aside className="rounded-lg bg-navy p-4 text-white shadow-panel">
-          <p className="px-2 text-xs font-extrabold uppercase tracking-[0.22em] text-white/55">
+    <main className="min-h-[calc(100vh-76px)] px-4 py-8 sm:px-6 lg:px-9">
+      <div className="mx-auto grid max-w-[1440px] gap-0 overflow-hidden rounded-[34px] border border-border bg-soft shadow-panel lg:grid-cols-[250px_1fr]">
+        <aside className="bg-navy p-5 text-white">
+          <p className="px-2 text-xs font-black uppercase tracking-[0.22em] text-white/55">
             Admin
           </p>
-          <h1 className="mt-2 px-2 text-xl font-extrabold tracking-normal">
+          <h1 className="mt-2 px-2 text-xl font-black tracking-normal">
             数据管理
           </h1>
           <nav className="mt-6 space-y-2" aria-label="Admin navigation">
@@ -33,7 +33,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 <Link
                   aria-current={active ? "page" : undefined}
                   className={cx(
-                    "flex min-h-11 items-center rounded-sm px-3 text-sm font-bold text-white/70 hover:bg-white/10 hover:text-white",
+                    "flex min-h-12 items-center rounded-sm px-4 text-sm font-black text-white/70 hover:bg-white/10 hover:text-white",
                     active && "bg-white/15 text-white"
                   )}
                   href={item.href}
@@ -45,9 +45,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
             })}
           </nav>
         </aside>
-        <section>{children}</section>
+        <section className="min-w-0 p-6 lg:p-8">{children}</section>
       </div>
     </main>
   );
 }
-

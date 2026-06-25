@@ -209,7 +209,6 @@ POST   /api/admin/import/jobs
 GET    /api/admin/import/jobs
 GET    /api/admin/import/jobs/:jobId
 PATCH  /api/admin/import/jobs/:jobId/items/:itemId
-POST   /api/admin/import/jobs/:jobId/submit-review
 POST   /api/admin/import/jobs/:jobId/publish
 
 GET    /api/admin/programs
@@ -221,11 +220,6 @@ GET    /api/admin/cases
 POST   /api/admin/cases
 PATCH  /api/admin/cases/:caseId
 DELETE /api/admin/cases/:caseId
-
-GET    /api/admin/reviews
-POST   /api/admin/reviews/:reviewId/approve
-POST   /api/admin/reviews/:reviewId/reject
-POST   /api/admin/reviews/:reviewId/publish
 
 GET    /api/admin/tags
 POST   /api/admin/tags
@@ -256,7 +250,7 @@ DELETE /api/admin/relations/:relationId
 
 ### 3.2 活动管理
 
-活动支持草稿、待审核、已发布、退回、归档状态。删除接口建议优先软删除或归档。
+活动支持草稿、已发布、归档状态。删除接口建议优先软删除或归档。
 
 ### 3.3 案例管理
 
@@ -268,15 +262,9 @@ DELETE /api/admin/relations/:relationId
 - 精确学校名称
 - 任何可直接识别学生身份的信息
 
-### 3.4 审核发布
+### 3.4 发布方式
 
-审核动作：
-
-```ts
-type ReviewAction = 'approve' | 'reject' | 'publish';
-```
-
-审核记录需要保留审核人、意见、提交时间、审核时间。
+数据管理不需要审核流程。文档导入解析后由管理员直接发布；活动、案例和标签在对应管理页维护。
 
 ### 3.5 标签管理
 

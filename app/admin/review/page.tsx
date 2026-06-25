@@ -1,6 +1,5 @@
-import { AdminReviewPage } from "@/features/admin/admin-pages";
+import { redirect } from "next/navigation";
 
 export default function ReviewAdminPage() {
-  return <AdminReviewPage />;
+  redirect("/admin/programs");
 }
-

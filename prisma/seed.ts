@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import { config } from "dotenv";
-import { mockReviewRecords, mockTags, mockImportJobs } from "../lib/mock/admin";
+import { mockTags, mockImportJobs } from "../lib/mock/admin";
 import { mockCases } from "../lib/mock/cases";
 import { mockPrograms } from "../lib/mock/programs";
 
@@ -146,17 +146,6 @@ async function main() {
       progress: job.progress,
       errorMessage: job.errorMessage,
       createdAt: asDate(job.createdAt)
-    }))
-  });
-
-  await prisma.reviewRecord.createMany({
-    data: mockReviewRecords.map((record) => ({
-      id: record.id,
-      targetType: record.targetType,
-      title: record.title,
-      status: record.status,
-      submittedAt: asDate(record.submittedAt),
-      reviewerNote: record.reviewerNote
     }))
   });
 

@@ -19,17 +19,6 @@ type ImportJobView = ImportJob & {
   items?: ImportItemView[];
 };
 
-type ReviewRecordView = {
-  id: string;
-  targetType: string;
-  targetId?: string | null;
-  title: string;
-  status: string;
-  submittedAt: string;
-  reviewedAt?: string | null;
-  reviewerNote?: string | null;
-};
-
 type TagView = {
   id: string;
   name: string;
@@ -68,7 +57,6 @@ export function AdminImportPage() {
   const [uploading, setUploading] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
   const parsedCount = jobs.reduce((total, job) => total + (job.items?.length ?? 0), 0);
-  const pendingCount = jobs.filter((job) => job.status === "reviewing" || job.status === "parsed").length;
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     setFile(event.target.files?.[0] ?? null);
@@ -99,13 +87,13 @@ export function AdminImportPage() {
     }
   };
 
-  const runJobAction = async (jobId: string, action: "submit-review" | "publish") => {
+  const publishJob = async (jobId: string) => {
     setActionMessage("");
     try {
-      await apiFetch<ImportJobView>(`/api/admin/import/jobs/${jobId}/${action}`, {
+      await apiFetch<ImportJobView>(`/api/admin/import/jobs/${jobId}/publish`, {
         method: "POST"
       });
-      setActionMessage(action === "submit-review" ? "已提交审核。" : "已发布到活动库。");
+      setActionMessage("已发布到活动库。");
       await reload();
     } catch (actionError) {
       setActionMessage(actionError instanceof Error ? actionError.message : "操作失败");
@@ -183,17 +171,10 @@ export function AdminImportPage() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
-                      onClick={() => void runJobAction(job.id, "submit-review")}
+                      onClick={() => void publishJob(job.id)}
                       type="button"
                     >
-                      提交审核
-                    </button>
-                    <button
-                      className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
-                      onClick={() => void runJobAction(job.id, "publish")}
-                      type="button"
-                    >
-                      发布
+                      发布到活动库
                     </button>
                   </div>
                 </div>
@@ -207,7 +188,7 @@ export function AdminImportPage() {
             <h2 className="text-lg font-extrabold tracking-normal text-ink">结构化预览</h2>
             <dl className="mt-4 space-y-3">
               <AdminStat label="已解析活动" value={`${parsedCount}`} />
-              <AdminStat label="待审核任务" value={`${pendingCount}`} />
+              <AdminStat label="已发布任务" value={`${jobs.filter((job) => job.status === "published").length}`} />
               <AdminStat label="来源文档" value={jobs[0]?.fileName ?? "待上传"} />
             </dl>
           </Card>
@@ -285,84 +266,6 @@ export function AdminCasesPage() {
           />
         ) : null}
       </Card>
-    </div>
-  );
-}
-
-export function AdminReviewPage() {
-  const { items: reviews, loading, error, reload } = useApiList<ReviewRecordView>("/api/admin/reviews");
-  const [message, setMessage] = useState("");
-
-  const runReviewAction = async (
-    reviewId: string,
-    action: "approve" | "reject" | "publish"
-  ) => {
-    setMessage("");
-    try {
-      await apiFetch<ReviewRecordView>(`/api/admin/reviews/${reviewId}/${action}`, {
-        method: "POST"
-      });
-      setMessage("审核动作已执行。");
-      await reload();
-    } catch (actionError) {
-      setMessage(actionError instanceof Error ? actionError.message : "审核操作失败");
-    }
-  };
-
-  return (
-    <div>
-      <PageHeading
-        description="审核自动解析或人工录入后的结构化资料，确认后发布到前台。"
-        eyebrow="Admin"
-        title="审核发布"
-      />
-      <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
-        <Card>
-          {loading ? <p className="text-sm font-bold text-secondary">加载审核列表中...</p> : null}
-          {error ? <p className="text-sm font-bold text-danger">{error}</p> : null}
-          {message ? <p className="mb-3 text-sm font-bold text-secondary">{message}</p> : null}
-          {!loading && !error ? (
-            <DataTable
-              headers={["标题", "类型", "状态", "提交时间", "审核意见"]}
-              rows={reviews.map((record) => [
-                record.title,
-                record.targetType,
-                record.status,
-                record.submittedAt,
-                record.reviewerNote ?? "无"
-              ])}
-            />
-          ) : null}
-        </Card>
-        <Card>
-          <h2 className="text-lg font-extrabold tracking-normal text-ink">审核动作</h2>
-          <div className="mt-4 space-y-3">
-            {reviews.slice(0, 1).map((record) => (
-              <div className="space-y-3" key={record.id}>
-                <p className="text-sm font-bold leading-7 text-secondary">
-                  当前选中：{record.title}
-                </p>
-                {[
-                  ["approve", "通过"],
-                  ["reject", "退回修改"],
-                  ["publish", "发布上线"]
-                ].map(([action, label]) => (
-                  <button
-                    className="block min-h-11 w-full rounded-sm border border-border bg-soft px-4 text-left text-sm font-bold text-ink hover:border-primary hover:text-primary"
-                    key={action}
-                    onClick={() =>
-                      void runReviewAction(record.id, action as "approve" | "reject" | "publish")
-                    }
-                    type="button"
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
     </div>
   );
 }

@@ -9,7 +9,6 @@ const adminNav = [
   { href: "/admin/import", label: "文档录入" },
   { href: "/admin/programs", label: "活动管理" },
   { href: "/admin/cases", label: "案例管理" },
-  { href: "/admin/review", label: "审核发布" },
   { href: "/admin/tags", label: "标签管理" }
 ];
 

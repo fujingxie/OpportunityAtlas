@@ -1,9 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
+import { config } from "dotenv";
 import { mockReviewRecords, mockTags, mockImportJobs } from "../lib/mock/admin";
 import { mockCases } from "../lib/mock/cases";
 import { mockPrograms } from "../lib/mock/programs";
+
+config({ path: ".env.local" });
+config({ path: ".env" });
 
 const databaseUrl = process.env.DATABASE_URL;
 

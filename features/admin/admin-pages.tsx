@@ -50,6 +50,22 @@ type ProgramDraftForm = {
   source: Program["source"];
 };
 
+type CaseDraftForm = {
+  anonymousCode: string;
+  grade: StudentCase["grade"];
+  schoolType: StudentCase["schoolType"];
+  gpaRange: string;
+  academicSummary: string;
+  activityExperienceText: string;
+  intendedMajor: string;
+  resultSummary: string;
+  resultTier: string;
+  personalSummary: string;
+  consultantReview: string;
+  tagsText: string;
+  status: StudentCase["status"];
+};
+
 type TagView = {
   id: string;
   name: string;
@@ -85,6 +101,22 @@ const emptyProgramDraftForm: ProgramDraftForm = {
   source: "manual"
 };
 
+const emptyCaseDraftForm: CaseDraftForm = {
+  anonymousCode: "",
+  grade: "G11",
+  schoolType: "international",
+  gpaRange: "",
+  academicSummary: "",
+  activityExperienceText: "",
+  intendedMajor: "",
+  resultSummary: "",
+  resultTier: "",
+  personalSummary: "",
+  consultantReview: "",
+  tagsText: "",
+  status: "draft"
+};
+
 const programTypeOptions: Array<{ label: string; value: Program["type"] }> = [
   { label: "竞赛", value: "Competition" },
   { label: "夏校", value: "Summer School" },
@@ -99,6 +131,25 @@ const programFormatOptions: Array<{ label: string; value: Program["format"] }> =
 ];
 
 const programStatusOptions: Array<{ label: string; value: Program["status"] }> = [
+  { label: "草稿", value: "draft" },
+  { label: "已发布", value: "published" },
+  { label: "已归档", value: "archived" }
+];
+
+const caseGradeOptions: Array<{ label: string; value: StudentCase["grade"] }> = [
+  { label: "G9", value: "G9" },
+  { label: "G10", value: "G10" },
+  { label: "G11", value: "G11" },
+  { label: "G12", value: "G12" }
+];
+
+const caseSchoolTypeOptions: Array<{ label: string; value: StudentCase["schoolType"] }> = [
+  { label: "国际学校", value: "international" },
+  { label: "公立学校", value: "public" },
+  { label: "其他", value: "other" }
+];
+
+const caseStatusOptions: Array<{ label: string; value: StudentCase["status"] }> = [
   { label: "草稿", value: "draft" },
   { label: "已发布", value: "published" },
   { label: "已归档", value: "archived" }
@@ -136,6 +187,14 @@ function isProgramSource(value: unknown): value is Program["source"] {
   return value === "document_import" || value === "manual";
 }
 
+function isCaseGrade(value: unknown): value is StudentCase["grade"] {
+  return value === "G9" || value === "G10" || value === "G11" || value === "G12";
+}
+
+function isSchoolType(value: unknown): value is StudentCase["schoolType"] {
+  return value === "international" || value === "public" || value === "other";
+}
+
 function arrayToText(value: unknown) {
   return Array.isArray(value) ? value.filter((item) => typeof item === "string").join("、") : "";
 }
@@ -145,6 +204,39 @@ function textToArray(value: string) {
     .split(/[、,，;；\n]/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function activityExperienceToText(value: StudentCase["activityExperience"]) {
+  return value
+    .map((activity) =>
+      [
+        activity.programName,
+        activity.type,
+        activity.stage,
+        activity.description ?? ""
+      ]
+        .map((part) => part.trim())
+        .join(" | ")
+    )
+    .join("\n");
+}
+
+function textToActivityExperience(value: string): StudentCase["activityExperience"] {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [programName, type, stage, ...descriptionParts] = line
+        .split("|")
+        .map((part) => part.trim());
+      return {
+        programName: programName || "未命名活动",
+        type: type || "活动",
+        stage: stage || "参与",
+        description: descriptionParts.join(" | ") || undefined
+      };
+    });
 }
 
 function toProgramDraftForm(value: unknown): ProgramDraftForm {
@@ -210,6 +302,46 @@ function toProgramDraftData(
     capacityLimit: form.capacityLimit.trim(),
     status: overrides.status ?? form.status,
     source: overrides.source ?? form.source
+  };
+}
+
+function toCaseDraftForm(value: StudentCase | null | undefined): CaseDraftForm {
+  if (!value) {
+    return emptyCaseDraftForm;
+  }
+  return {
+    anonymousCode: value.anonymousCode,
+    grade: isCaseGrade(value.grade) ? value.grade : "G11",
+    schoolType: isSchoolType(value.schoolType) ? value.schoolType : "international",
+    gpaRange: value.gpaRange,
+    academicSummary: value.academicSummary ?? "",
+    activityExperienceText: activityExperienceToText(value.activityExperience),
+    intendedMajor: value.intendedMajor,
+    resultSummary: value.resultSummary,
+    resultTier: value.resultTier ?? "",
+    personalSummary: value.personalSummary ?? "",
+    consultantReview: value.consultantReview ?? "",
+    tagsText: value.tags.join("、"),
+    status: isProgramStatus(value.status) ? value.status : "draft"
+  };
+}
+
+function toCaseDraftData(form: CaseDraftForm) {
+  return {
+    anonymousCode: form.anonymousCode.trim(),
+    grade: form.grade,
+    schoolType: form.schoolType,
+    gpaRange: form.gpaRange.trim(),
+    academicSummary: form.academicSummary.trim(),
+    activityExperience: textToActivityExperience(form.activityExperienceText),
+    intendedMajor: form.intendedMajor.trim(),
+    resultSummary: form.resultSummary.trim(),
+    resultTier: form.resultTier.trim(),
+    personalSummary: form.personalSummary.trim(),
+    consultantReview: form.consultantReview.trim(),
+    tags: textToArray(form.tagsText),
+    status: form.status,
+    completeness: 80
   };
 }
 
@@ -915,34 +1047,206 @@ export function AdminProgramsPage() {
 }
 
 export function AdminCasesPage() {
-  const { items: cases, loading, error } = useApiList<StudentCase>("/api/admin/cases?pageSize=100");
+  const { items: cases, loading, error, reload } = useApiList<StudentCase>("/api/admin/cases?pageSize=100");
+  const [mode, setMode] = useState<"create" | "edit">("create");
+  const [selectedCaseId, setSelectedCaseId] = useState("");
+  const [caseForm, setCaseForm] = useState<CaseDraftForm>(emptyCaseDraftForm);
+  const [savingCase, setSavingCase] = useState(false);
+  const [caseMessage, setCaseMessage] = useState("");
+  const selectedCase = cases.find((studentCase) => studentCase.id === selectedCaseId);
+
+  const startCreateCase = () => {
+    setMode("create");
+    setSelectedCaseId("");
+    setCaseForm(emptyCaseDraftForm);
+    setCaseMessage("");
+  };
+
+  const startEditCase = (studentCase: StudentCase) => {
+    setMode("edit");
+    setSelectedCaseId(studentCase.id);
+    setCaseForm(toCaseDraftForm(studentCase));
+    setCaseMessage("");
+  };
+
+  const updateCaseField = <K extends keyof CaseDraftForm>(field: K, value: CaseDraftForm[K]) => {
+    setCaseForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  };
+
+  const saveCase = async () => {
+    if (!caseForm.anonymousCode.trim()) {
+      setCaseMessage("案例编号不能为空");
+      return;
+    }
+    if (!caseForm.intendedMajor.trim()) {
+      setCaseMessage("申请方向不能为空");
+      return;
+    }
+    if (!caseForm.resultSummary.trim()) {
+      setCaseMessage("结果摘要不能为空");
+      return;
+    }
+
+    setSavingCase(true);
+    setCaseMessage("");
+    try {
+      const response = await apiFetch<StudentCase>(
+        mode === "edit" && selectedCase ? `/api/admin/cases/${selectedCase.id}` : "/api/admin/cases",
+        {
+          method: mode === "edit" && selectedCase ? "PATCH" : "POST",
+          body: JSON.stringify(toCaseDraftData(caseForm))
+        }
+      );
+      setCaseMessage(mode === "edit" ? "案例已保存。" : "案例已创建。");
+      setMode("edit");
+      setSelectedCaseId(response.data.id);
+      setCaseForm(toCaseDraftForm(response.data));
+      await reload();
+    } catch (saveError) {
+      setCaseMessage(saveError instanceof Error ? saveError.message : "保存失败");
+    } finally {
+      setSavingCase(false);
+    }
+  };
+
+  const archiveCase = async () => {
+    if (!selectedCase) {
+      return;
+    }
+    if (!window.confirm(`确认归档「${selectedCase.anonymousCode}」？`)) {
+      return;
+    }
+
+    setSavingCase(true);
+    setCaseMessage("");
+    try {
+      await apiFetch<StudentCase>(`/api/admin/cases/${selectedCase.id}`, {
+        method: "DELETE"
+      });
+      setCaseMessage("案例已归档。");
+      await reload();
+      startCreateCase();
+    } catch (archiveError) {
+      setCaseMessage(archiveError instanceof Error ? archiveError.message : "归档失败");
+    } finally {
+      setSavingCase(false);
+    }
+  };
 
   return (
     <div>
       <PageHeading
         description="维护匿名案例、活动路径、结果摘要和关联活动。"
         eyebrow="Admin"
+        actions={
+          <button
+            className="rounded-sm bg-primary px-4 py-2 text-sm font-black text-white"
+            onClick={startCreateCase}
+            type="button"
+          >
+            新增案例
+          </button>
+        }
         title="案例管理"
       />
-      <Card>
-        {loading ? <p className="text-sm font-bold text-secondary">加载案例列表中...</p> : null}
-        {error ? <p className="text-sm font-bold text-danger">{error}</p> : null}
-        {!loading && !error ? (
-          <DataTable
-            headers={["案例 ID", "背景", "申请方向", "关联活动数", "结果", "操作"]}
-            rows={cases.map((studentCase) => [
-              studentCase.anonymousCode,
-              `${studentCase.grade} / ${studentCase.schoolType} / ${studentCase.gpaRange}`,
-              studentCase.intendedMajor,
-              `${studentCase.activityExperience.length}`,
-              studentCase.resultSummary,
-              <TextLink href={`/cases/${studentCase.id}`} key={studentCase.id}>
-                查看
-              </TextLink>
-            ])}
-          />
-        ) : null}
-      </Card>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_460px]">
+        <Card>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-extrabold tracking-normal text-ink">案例列表</h2>
+              <p className="mt-1 text-sm font-bold text-secondary">共 {cases.length} 条案例</p>
+            </div>
+            <button
+              className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+              onClick={() => void reload()}
+              type="button"
+            >
+              刷新
+            </button>
+          </div>
+          {loading ? <p className="mt-4 text-sm font-bold text-secondary">加载案例列表中...</p> : null}
+          {error ? <p className="mt-4 text-sm font-bold text-danger">{error}</p> : null}
+          {!loading && !error ? (
+            <div className="mt-4">
+              <DataTable
+                headers={["案例 ID", "背景", "申请方向", "活动数", "状态", "操作"]}
+                rows={cases.map((studentCase) => [
+                  <button
+                    className="text-left font-extrabold text-ink hover:text-primary"
+                    key={`edit-${studentCase.id}`}
+                    onClick={() => startEditCase(studentCase)}
+                    type="button"
+                  >
+                    {studentCase.anonymousCode}
+                  </button>,
+                  `${studentCase.grade} / ${studentCase.schoolType} / ${studentCase.gpaRange}`,
+                  studentCase.intendedMajor,
+                  `${studentCase.activityExperience.length}`,
+                  <Badge key={`status-${studentCase.id}`} tone={statusTone(studentCase.status)}>
+                    {studentCase.status}
+                  </Badge>,
+                  <div className="flex flex-wrap gap-2" key={`actions-${studentCase.id}`}>
+                    <button
+                      className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+                      onClick={() => startEditCase(studentCase)}
+                      type="button"
+                    >
+                      编辑
+                    </button>
+                    <TextLink href={`/cases/${studentCase.id}`}>查看</TextLink>
+                  </div>
+                ])}
+              />
+            </div>
+          ) : null}
+        </Card>
+
+        <Card>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-extrabold tracking-normal text-ink">
+                {mode === "create" ? "新增案例" : "编辑案例"}
+              </h2>
+              <p className="mt-1 text-sm font-bold text-secondary">
+                {mode === "create" ? "手动录入匿名学生路径" : selectedCase?.anonymousCode ?? "选择案例后编辑"}
+              </p>
+            </div>
+            {mode === "edit" && selectedCase ? (
+              <Badge tone={statusTone(selectedCase.status)}>{selectedCase.status}</Badge>
+            ) : null}
+          </div>
+
+          <div className="mt-5 space-y-4">
+            <CaseFormFields form={caseForm} onFieldChange={updateCaseField} />
+            {caseMessage ? (
+              <p className="text-sm font-bold text-secondary">{caseMessage}</p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="rounded-sm bg-primary px-4 py-2 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={savingCase}
+                onClick={() => void saveCase()}
+                type="button"
+              >
+                {savingCase ? "保存中" : mode === "create" ? "创建案例" : "保存修改"}
+              </button>
+              {mode === "edit" && selectedCase ? (
+                <button
+                  className="rounded-sm border border-border bg-surface px-4 py-2 text-sm font-black text-danger disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={savingCase || selectedCase.status === "archived"}
+                  onClick={() => void archiveCase()}
+                  type="button"
+                >
+                  归档案例
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -1134,6 +1438,94 @@ function ProgramFormFields({
           value={form.applicationMethod}
         />
       </div>
+    </div>
+  );
+}
+
+function CaseFormFields({
+  form,
+  onFieldChange
+}: {
+  form: CaseDraftForm;
+  onFieldChange: <K extends keyof CaseDraftForm>(field: K, value: CaseDraftForm[K]) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <DraftTextField
+          label="案例编号"
+          onChange={(value) => onFieldChange("anonymousCode", value)}
+          value={form.anonymousCode}
+        />
+        <DraftSelectField
+          label="年级"
+          onChange={(value) => onFieldChange("grade", value as StudentCase["grade"])}
+          options={caseGradeOptions}
+          value={form.grade}
+        />
+        <DraftSelectField
+          label="学校类型"
+          onChange={(value) => onFieldChange("schoolType", value as StudentCase["schoolType"])}
+          options={caseSchoolTypeOptions}
+          value={form.schoolType}
+        />
+        <DraftTextField
+          label="GPA 区间"
+          onChange={(value) => onFieldChange("gpaRange", value)}
+          value={form.gpaRange}
+        />
+        <DraftTextField
+          label="申请方向"
+          onChange={(value) => onFieldChange("intendedMajor", value)}
+          value={form.intendedMajor}
+        />
+        <DraftTextField
+          label="结果层级"
+          onChange={(value) => onFieldChange("resultTier", value)}
+          value={form.resultTier}
+        />
+        <DraftSelectField
+          label="状态"
+          onChange={(value) => onFieldChange("status", value as StudentCase["status"])}
+          options={caseStatusOptions}
+          value={form.status}
+        />
+        <DraftTextField
+          label="标签"
+          onChange={(value) => onFieldChange("tagsText", value)}
+          value={form.tagsText}
+        />
+      </div>
+      <DraftTextField
+        label="学术背景"
+        onChange={(value) => onFieldChange("academicSummary", value)}
+        textarea
+        value={form.academicSummary}
+      />
+      <DraftTextField
+        label="活动经历"
+        onChange={(value) => onFieldChange("activityExperienceText", value)}
+        textarea
+        value={form.activityExperienceText}
+      />
+      <DraftTextField
+        label="结果摘要"
+        onChange={(value) => onFieldChange("resultSummary", value)}
+        textarea
+        value={form.resultSummary}
+      />
+      <DraftTextField
+        label="个人总结"
+        onChange={(value) => onFieldChange("personalSummary", value)}
+        textarea
+        value={form.personalSummary}
+      />
+      <DraftTextField
+        label="顾问点评"
+        onChange={(value) => onFieldChange("consultantReview", value)}
+        textarea
+        value={form.consultantReview}
+      />
     </div>
   );
 }

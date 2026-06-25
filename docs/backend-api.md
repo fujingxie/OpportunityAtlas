@@ -6,6 +6,13 @@
 
 ## 1. 通用约定
 
+### 1.0 技术实现
+
+- 服务端形态：当前 Next.js 项目内的 Route Handlers。
+- 数据库：PostgreSQL + Prisma。
+- 本地数据库：可通过项目根目录 `docker-compose.yml` 启动 PostgreSQL。
+- 环境变量：复制 `.env.example` 为 `.env.local` 后按需修改。
+
 ### 1.1 Base Path
 
 ```txt
@@ -61,6 +68,8 @@ sortOrder=asc|desc
 
 ```txt
 GET /api/auth/me
+POST /api/auth/login
+POST /api/auth/logout
 ```
 
 返回：
@@ -70,10 +79,22 @@ type UserRole = 'viewer' | 'admin';
 
 type CurrentUser = {
   id: string;
+  email: string;
   name: string;
   role: UserRole;
 };
 ```
+
+`POST /api/auth/login` 请求：
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "ChangeMe123!"
+}
+```
+
+登录成功后服务端写入 HttpOnly session cookie。`POST /api/auth/logout` 会清理当前 session。
 
 非 admin 访问 `/api/admin/*` 时返回：
 
@@ -220,7 +241,8 @@ DELETE /api/admin/relations/:relationId
 `POST /api/admin/import/jobs`
 
 - 请求类型：`multipart/form-data`
-- 文件类型：`pdf`、`docx`、`xlsx`、`csv`
+- 一期支持文件类型：`docx`
+- `pdf`、`xlsx`、`csv` 暂返回 `UNSUPPORTED_FILE_TYPE`
 - 最大文件大小：50MB
 - 返回 `ImportJob`
 
@@ -358,4 +380,23 @@ type ImportJob = {
 - 匹配规则权重配置
 - 自动生成申请路径
 - 真实 AI 文档解析算法细节
+- PDF / XLSX / CSV 自动解析
 
+## 6. 本地启动顺序
+
+```bash
+cp .env.example .env.local
+docker compose up -d postgres
+npm install
+npm run db:generate
+npm run db:push
+npm run db:seed
+npm run dev
+```
+
+默认 seed 管理员账号来自环境变量：
+
+```txt
+ADMIN_EMAIL
+ADMIN_PASSWORD
+```

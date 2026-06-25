@@ -1,12 +1,116 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useCallback, useEffect, useState, type ChangeEvent, type ReactNode } from "react";
 import { Badge, Card, PageHeading, TextLink } from "@/components/ui";
-import { mockImportJobs, mockReviewRecords, mockTags } from "@/lib/mock/admin";
-import { mockCases } from "@/lib/mock/cases";
-import { mockPrograms } from "@/lib/mock/programs";
+import { apiFetch } from "@/lib/api-client";
+import type { ImportJob, Program, StudentCase } from "@/lib/types";
+
+type ImportItemView = {
+  id: string;
+  title: string;
+  itemType: string;
+  status: string;
+  parsedData: unknown;
+};
+
+type ImportJobView = ImportJob & {
+  updatedAt?: string;
+  storagePath?: string | null;
+  items?: ImportItemView[];
+};
+
+type ReviewRecordView = {
+  id: string;
+  targetType: string;
+  targetId?: string | null;
+  title: string;
+  status: string;
+  submittedAt: string;
+  reviewedAt?: string | null;
+  reviewerNote?: string | null;
+};
+
+type TagView = {
+  id: string;
+  name: string;
+  group: string;
+  enabled: boolean;
+};
+
+function useApiList<T>(path: string) {
+  const [items, setItems] = useState<T[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await apiFetch<T[]>(path);
+      setItems(response.data);
+      setError("");
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "数据加载失败");
+    } finally {
+      setLoading(false);
+    }
+  }, [path]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return { items, loading, error, reload: load };
+}
 
 export function AdminImportPage() {
-  const parsedCount = mockPrograms.filter((program) => program.status === "published").length;
-  const archivedCount = mockPrograms.filter((program) => program.status === "archived").length;
+  const { items: jobs, loading, error, reload } = useApiList<ImportJobView>("/api/admin/import/jobs");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [actionMessage, setActionMessage] = useState("");
+  const parsedCount = jobs.reduce((total, job) => total + (job.items?.length ?? 0), 0);
+  const pendingCount = jobs.filter((job) => job.status === "reviewing" || job.status === "parsed").length;
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setFile(event.target.files?.[0] ?? null);
+  };
+
+  const uploadFile = async () => {
+    if (!file) {
+      setActionMessage("请先选择 DOCX 文件");
+      return;
+    }
+
+    setUploading(true);
+    setActionMessage("");
+    const formData = new FormData();
+    formData.set("file", file);
+    try {
+      await apiFetch<ImportJobView>("/api/admin/import/jobs", {
+        method: "POST",
+        body: formData
+      });
+      setFile(null);
+      setActionMessage("上传解析完成，已生成预览项。");
+      await reload();
+    } catch (uploadError) {
+      setActionMessage(uploadError instanceof Error ? uploadError.message : "上传失败");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const runJobAction = async (jobId: string, action: "submit-review" | "publish") => {
+    setActionMessage("");
+    try {
+      await apiFetch<ImportJobView>(`/api/admin/import/jobs/${jobId}/${action}`, {
+        method: "POST"
+      });
+      setActionMessage(action === "submit-review" ? "已提交审核。" : "已发布到活动库。");
+      await reload();
+    } catch (actionError) {
+      setActionMessage(actionError instanceof Error ? actionError.message : "操作失败");
+    }
+  };
 
   return (
     <div>
@@ -25,14 +129,35 @@ export function AdminImportPage() {
               拖拽 Word / PDF / Excel 文件开始录入
             </h2>
             <p className="mt-2 text-sm leading-7 text-secondary">
-              当前版本不做真实上传，后续接入 `POST /api/admin/import/jobs`。
+              当前一期支持 DOCX 解析，PDF / XLSX / CSV 会返回不支持类型。
             </p>
+            <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <input
+                accept=".docx"
+                className="max-w-[280px] rounded-sm border border-border bg-surface px-3 py-3 text-sm font-bold text-secondary"
+                onChange={handleFileChange}
+                type="file"
+              />
+              <button
+                className="min-h-11 rounded-sm bg-primary px-5 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={uploading}
+                onClick={() => void uploadFile()}
+                type="button"
+              >
+                {uploading ? "上传中" : "上传解析"}
+              </button>
+            </div>
+            {actionMessage ? (
+              <p className="mt-4 text-sm font-bold text-secondary">{actionMessage}</p>
+            ) : null}
           </div>
 
           <div className="mt-6">
             <h2 className="text-lg font-extrabold tracking-normal text-ink">上传队列</h2>
             <div className="mt-4 space-y-3">
-              {mockImportJobs.map((job) => (
+              {loading ? <p className="text-sm font-bold text-secondary">加载上传队列中...</p> : null}
+              {error ? <p className="text-sm font-bold text-danger">{error}</p> : null}
+              {jobs.map((job) => (
                 <div
                   className="rounded-sm border border-border bg-soft p-4"
                   key={job.id}
@@ -55,6 +180,22 @@ export function AdminImportPage() {
                   {job.errorMessage ? (
                     <p className="mt-3 text-sm leading-7 text-danger">{job.errorMessage}</p>
                   ) : null}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+                      onClick={() => void runJobAction(job.id, "submit-review")}
+                      type="button"
+                    >
+                      提交审核
+                    </button>
+                    <button
+                      className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+                      onClick={() => void runJobAction(job.id, "publish")}
+                      type="button"
+                    >
+                      发布
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -66,8 +207,8 @@ export function AdminImportPage() {
             <h2 className="text-lg font-extrabold tracking-normal text-ink">结构化预览</h2>
             <dl className="mt-4 space-y-3">
               <AdminStat label="已解析活动" value={`${parsedCount}`} />
-              <AdminStat label="待补字段" value={`${archivedCount}`} />
-              <AdminStat label="来源文档" value="活动.docx" />
+              <AdminStat label="待审核任务" value={`${pendingCount}`} />
+              <AdminStat label="来源文档" value={jobs[0]?.fileName ?? "待上传"} />
             </dl>
           </Card>
           <Card>
@@ -83,6 +224,8 @@ export function AdminImportPage() {
 }
 
 export function AdminProgramsPage() {
+  const { items: programs, loading, error } = useApiList<Program>("/api/admin/programs?pageSize=100");
+
   return (
     <div>
       <PageHeading
@@ -91,25 +234,31 @@ export function AdminProgramsPage() {
         title="活动管理"
       />
       <Card>
-        <DataTable
-          headers={["活动名称", "类型", "形式", "完整度", "状态", "操作"]}
-          rows={mockPrograms.slice(0, 12).map((program) => [
-            program.name,
-            program.type,
-            program.format,
-            `${program.completeness}%`,
-            program.status,
-            <TextLink href={`/programs/${program.id}`} key={program.id}>
-              查看
-            </TextLink>
-          ])}
-        />
+        {loading ? <p className="text-sm font-bold text-secondary">加载活动列表中...</p> : null}
+        {error ? <p className="text-sm font-bold text-danger">{error}</p> : null}
+        {!loading && !error ? (
+          <DataTable
+            headers={["活动名称", "类型", "形式", "完整度", "状态", "操作"]}
+            rows={programs.slice(0, 12).map((program) => [
+              program.name,
+              program.type,
+              program.format,
+              `${program.completeness}%`,
+              program.status,
+              <TextLink href={`/programs/${program.id}`} key={program.id}>
+                查看
+              </TextLink>
+            ])}
+          />
+        ) : null}
       </Card>
     </div>
   );
 }
 
 export function AdminCasesPage() {
+  const { items: cases, loading, error } = useApiList<StudentCase>("/api/admin/cases?pageSize=100");
+
   return (
     <div>
       <PageHeading
@@ -118,25 +267,48 @@ export function AdminCasesPage() {
         title="案例管理"
       />
       <Card>
-        <DataTable
-          headers={["案例 ID", "背景", "申请方向", "关联活动数", "结果", "操作"]}
-          rows={mockCases.map((studentCase) => [
-            studentCase.anonymousCode,
-            `${studentCase.grade} / ${studentCase.schoolType} / ${studentCase.gpaRange}`,
-            studentCase.intendedMajor,
-            `${studentCase.activityExperience.length}`,
-            studentCase.resultSummary,
-            <TextLink href={`/cases/${studentCase.id}`} key={studentCase.id}>
-              查看
-            </TextLink>
-          ])}
-        />
+        {loading ? <p className="text-sm font-bold text-secondary">加载案例列表中...</p> : null}
+        {error ? <p className="text-sm font-bold text-danger">{error}</p> : null}
+        {!loading && !error ? (
+          <DataTable
+            headers={["案例 ID", "背景", "申请方向", "关联活动数", "结果", "操作"]}
+            rows={cases.map((studentCase) => [
+              studentCase.anonymousCode,
+              `${studentCase.grade} / ${studentCase.schoolType} / ${studentCase.gpaRange}`,
+              studentCase.intendedMajor,
+              `${studentCase.activityExperience.length}`,
+              studentCase.resultSummary,
+              <TextLink href={`/cases/${studentCase.id}`} key={studentCase.id}>
+                查看
+              </TextLink>
+            ])}
+          />
+        ) : null}
       </Card>
     </div>
   );
 }
 
 export function AdminReviewPage() {
+  const { items: reviews, loading, error, reload } = useApiList<ReviewRecordView>("/api/admin/reviews");
+  const [message, setMessage] = useState("");
+
+  const runReviewAction = async (
+    reviewId: string,
+    action: "approve" | "reject" | "publish"
+  ) => {
+    setMessage("");
+    try {
+      await apiFetch<ReviewRecordView>(`/api/admin/reviews/${reviewId}/${action}`, {
+        method: "POST"
+      });
+      setMessage("审核动作已执行。");
+      await reload();
+    } catch (actionError) {
+      setMessage(actionError instanceof Error ? actionError.message : "审核操作失败");
+    }
+  };
+
   return (
     <div>
       <PageHeading
@@ -146,28 +318,47 @@ export function AdminReviewPage() {
       />
       <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
         <Card>
-          <DataTable
-            headers={["标题", "类型", "状态", "提交时间", "审核意见"]}
-            rows={mockReviewRecords.map((record) => [
-              record.title,
-              record.targetType,
-              record.status,
-              record.submittedAt,
-              record.reviewerNote
-            ])}
-          />
+          {loading ? <p className="text-sm font-bold text-secondary">加载审核列表中...</p> : null}
+          {error ? <p className="text-sm font-bold text-danger">{error}</p> : null}
+          {message ? <p className="mb-3 text-sm font-bold text-secondary">{message}</p> : null}
+          {!loading && !error ? (
+            <DataTable
+              headers={["标题", "类型", "状态", "提交时间", "审核意见"]}
+              rows={reviews.map((record) => [
+                record.title,
+                record.targetType,
+                record.status,
+                record.submittedAt,
+                record.reviewerNote ?? "无"
+              ])}
+            />
+          ) : null}
         </Card>
         <Card>
           <h2 className="text-lg font-extrabold tracking-normal text-ink">审核动作</h2>
           <div className="mt-4 space-y-3">
-            {["通过", "退回修改", "发布上线"].map((label) => (
-              <button
-                className="block min-h-11 w-full rounded-sm border border-border bg-soft px-4 text-left text-sm font-bold text-ink hover:border-primary hover:text-primary"
-                key={label}
-                type="button"
-              >
-                {label}
-              </button>
+            {reviews.slice(0, 1).map((record) => (
+              <div className="space-y-3" key={record.id}>
+                <p className="text-sm font-bold leading-7 text-secondary">
+                  当前选中：{record.title}
+                </p>
+                {[
+                  ["approve", "通过"],
+                  ["reject", "退回修改"],
+                  ["publish", "发布上线"]
+                ].map(([action, label]) => (
+                  <button
+                    className="block min-h-11 w-full rounded-sm border border-border bg-soft px-4 text-left text-sm font-bold text-ink hover:border-primary hover:text-primary"
+                    key={action}
+                    onClick={() =>
+                      void runReviewAction(record.id, action as "approve" | "reject" | "publish")
+                    }
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             ))}
           </div>
         </Card>
@@ -177,6 +368,8 @@ export function AdminReviewPage() {
 }
 
 export function AdminTagsPage() {
+  const { items: tags, loading, error } = useApiList<TagView>("/api/admin/tags");
+
   return (
     <div>
       <PageHeading
@@ -185,8 +378,10 @@ export function AdminTagsPage() {
         title="标签管理"
       />
       <Card>
+        {loading ? <p className="text-sm font-bold text-secondary">加载标签中...</p> : null}
+        {error ? <p className="text-sm font-bold text-danger">{error}</p> : null}
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {mockTags.map((tag) => (
+          {tags.map((tag) => (
             <div className="rounded-sm border border-border bg-soft p-4" key={tag.id}>
               <div className="flex items-center justify-between gap-3">
                 <div>

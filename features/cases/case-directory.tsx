@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge, Card, EmptyState } from "@/components/ui";
-import { filterCases, getRelatedPrograms } from "@/lib/mock/service";
+import { apiFetch, toQueryString } from "@/lib/api-client";
 import type { StudentCase } from "@/lib/types";
+import { normalizeText } from "@/lib/utils";
 
 const grades = ["all", "G9", "G10", "G11", "G12"];
 const schoolTypes = ["all", "international", "public", "other"];
@@ -17,10 +18,69 @@ export function CaseDirectory() {
   const [schoolType, setSchoolType] = useState("all");
   const [activityType, setActivityType] = useState("all");
   const [resultTier, setResultTier] = useState("all");
+  const [caseData, setCaseData] = useState<StudentCase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setLoading(true);
+    apiFetch<StudentCase[]>(
+      `/api/cases${toQueryString({
+        q,
+        grade,
+        schoolType,
+        activityType,
+        resultTier,
+        pageSize: 100
+      })}`
+    )
+      .then((response) => {
+        setCaseData(response.data);
+        setError("");
+      })
+      .catch((fetchError) => {
+        setError(fetchError instanceof Error ? fetchError.message : "案例数据加载失败");
+      })
+      .finally(() => setLoading(false));
+  }, [activityType, grade, q, resultTier, schoolType]);
 
   const cases = useMemo(
-    () => filterCases({ q, grade, schoolType, activityType, resultTier }),
-    [activityType, grade, q, resultTier, schoolType]
+    () =>
+      caseData.filter((studentCase) => {
+        const normalizedQ = normalizeText(q);
+        if (normalizedQ) {
+          const haystack = [
+            studentCase.anonymousCode,
+            studentCase.academicSummary,
+            studentCase.intendedMajor,
+            studentCase.resultSummary,
+            studentCase.personalSummary,
+            ...studentCase.tags,
+            ...studentCase.activityExperience.map((activity) => activity.programName)
+          ].join(" ");
+          if (!normalizeText(haystack).includes(normalizedQ)) {
+            return false;
+          }
+        }
+
+        if (grade !== "all" && studentCase.grade !== grade) {
+          return false;
+        }
+        if (schoolType !== "all" && studentCase.schoolType !== schoolType) {
+          return false;
+        }
+        if (
+          activityType !== "all" &&
+          !studentCase.activityExperience.some((activity) => activity.type === activityType)
+        ) {
+          return false;
+        }
+        if (resultTier !== "all" && studentCase.resultTier !== resultTier) {
+          return false;
+        }
+        return true;
+      }),
+    [activityType, caseData, grade, q, resultTier, schoolType]
   );
 
   return (
@@ -72,7 +132,11 @@ export function CaseDirectory() {
           </label>
         </div>
 
-        {cases.length ? (
+        {loading ? (
+          <EmptyState description="正在请求后端案例接口。" title="加载案例中" />
+        ) : error ? (
+          <EmptyState description={error} title="案例数据加载失败" />
+        ) : cases.length ? (
           <div className="grid gap-5 xl:grid-cols-2">
             {cases.map((studentCase) => (
               <CaseCardItem key={studentCase.id} studentCase={studentCase} />
@@ -132,8 +196,6 @@ function FilterGroup({
 }
 
 function CaseCardItem({ studentCase }: { studentCase: StudentCase }) {
-  const relatedPrograms = getRelatedPrograms(studentCase);
-
   return (
     <Card className="relative overflow-hidden rounded-[28px] p-7">
       <div className="flex flex-wrap gap-2">
@@ -159,10 +221,10 @@ function CaseCardItem({ studentCase }: { studentCase: StudentCase }) {
           活动路径
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold text-secondary">
-          {relatedPrograms.map((program, index) => (
-            <span className="flex items-center gap-2" key={program.id}>
+          {studentCase.activityExperience.map((activity, index) => (
+            <span className="flex items-center gap-2" key={`${activity.stage}-${activity.programName}`}>
               {index > 0 ? <span className="text-muted">/</span> : null}
-              <span>{program.name}</span>
+              <span>{activity.programName}</span>
             </span>
           ))}
         </div>

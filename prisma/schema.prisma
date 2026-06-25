@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         String    @default("viewer")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Program {
+  id                   String                @id
+  name                 String
+  type                 String
+  organization         String
+  officialUrl          String?
+  applicationStartDate String?
+  applicationEndDate   String?
+  programStartDate     String?
+  programEndDate       String?
+  duration             String?
+  gradeRange           String
+  subjectArea          String
+  requirements         String?
+  location             String
+  format               String
+  costText             String?
+  scholarshipText      String?
+  description          String
+  coreTopics           String[]
+  highlights           String[]
+  applicationMethod    String?
+  requiredMaterials    String[]
+  capacityLimit        String?
+  tags                 String[]
+  status               String
+  source               String
+  completeness         Int
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  caseActivities       CaseActivity[]
+  caseRelations        ProgramCaseRelation[]
+}
+
+model StudentCase {
+  id                 String                @id
+  anonymousCode      String                @unique
+  grade              String
+  schoolType         String
+  gpaRange           String
+  academicSummary    String?
+  intendedMajor      String
+  resultSummary      String
+  resultTier         String?
+  personalSummary    String?
+  consultantReview   String?
+  tags               String[]
+  status             String
+  completeness       Int
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  activities         CaseActivity[]
+  programRelations   ProgramCaseRelation[]
+}
+
+model CaseActivity {
+  id          String       @id @default(cuid())
+  caseId      String
+  programId   String?
+  programName String
+  type        String
+  stage       String
+  description String?
+  order       Int          @default(0)
+  createdAt   DateTime     @default(now())
+  studentCase StudentCase  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  program     Program?     @relation(fields: [programId], references: [id], onDelete: SetNull)
+
+  @@index([caseId])
+  @@index([programId])
+}
+
+model ProgramCaseRelation {
+  id           String      @id @default(cuid())
+  programId    String
+  caseId       String
+  relationType String
+  reasons      String[]
+  createdAt    DateTime    @default(now())
+  program      Program     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  studentCase  StudentCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, caseId, relationType])
+  @@index([caseId])
+}
+
+model ImportJob {
+  id           String       @id @default(cuid())
+  fileName     String
+  fileType     String
+  fileSize     Int
+  sourceType   String
+  status       String
+  progress     Int          @default(0)
+  storagePath  String?
+  errorMessage String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  items        ImportItem[]
+}
+
+model ImportItem {
+  id          String    @id @default(cuid())
+  jobId       String
+  itemType    String
+  title       String
+  rawText     String?
+  parsedData  Json
+  status      String    @default("draft")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  job         ImportJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+}
+
+model ReviewRecord {
+  id           String   @id @default(cuid())
+  targetType   String
+  targetId     String?
+  title        String
+  status       String
+  submittedAt  DateTime @default(now())
+  reviewedAt   DateTime?
+  reviewerId   String?
+  reviewerNote String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Tag {
+  id        String   @id
+  name      String
+  group     String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, group])
+}

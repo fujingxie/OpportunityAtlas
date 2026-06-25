@@ -2,39 +2,68 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode
 } from "react";
-import type { UserRole } from "@/lib/types";
+import { apiFetch } from "@/lib/api-client";
+import type { CurrentUser, UserRole } from "@/lib/types";
 
 type AuthContextValue = {
   role: UserRole;
-  setRole: (role: UserRole) => void;
+  user: CurrentUser | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  refresh: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const STORAGE_KEY = "opportunity-atlas-role";
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [role, setRoleState] = useState<UserRole>("viewer");
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const savedRole = window.localStorage.getItem(STORAGE_KEY);
-    if (savedRole === "admin" || savedRole === "viewer") {
-      setRoleState(savedRole);
-    }
+  const refresh = useCallback(async () => {
+    const response = await apiFetch<CurrentUser>("/api/auth/me");
+    setUser(response.data.role === "viewer" && response.data.id === "anonymous" ? null : response.data);
   }, []);
 
-  const setRole = (nextRole: UserRole) => {
-    setRoleState(nextRole);
-    window.localStorage.setItem(STORAGE_KEY, nextRole);
-  };
+  const login = useCallback(async (email: string, password: string) => {
+    const response = await apiFetch<CurrentUser>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password })
+    });
+    setUser(response.data);
+  }, []);
 
-  const value = useMemo(() => ({ role, setRole }), [role]);
+  const logout = useCallback(async () => {
+    await apiFetch<{ success: boolean }>("/api/auth/logout", {
+      method: "POST"
+    });
+    setUser(null);
+  }, []);
+
+  useEffect(() => {
+    refresh()
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
+  }, [refresh]);
+
+  const value = useMemo(
+    () => ({
+      role: user?.role ?? "viewer",
+      user,
+      loading,
+      login,
+      logout,
+      refresh
+    }),
+    [loading, login, logout, refresh, user]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -46,4 +75,3 @@ export function useAuth() {
   }
   return context;
 }
-

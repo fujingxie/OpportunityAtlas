@@ -1,23 +1,51 @@
-import { notFound } from "next/navigation";
-import { Badge, Card, PageShell, TextLink } from "@/components/ui";
-import { mockPrograms } from "@/lib/mock/programs";
-import { getProgramById, getRelatedCases } from "@/lib/mock/service";
+"use client";
 
-export function generateStaticParams() {
-  return mockPrograms.map((program) => ({ programId: program.id }));
-}
+import { useEffect, useState } from "react";
+import { Badge, Card, EmptyState, PageShell, TextLink } from "@/components/ui";
+import { apiFetch } from "@/lib/api-client";
+import type { Program, StudentCase } from "@/lib/types";
 
 export default function ProgramDetailPage({
   params
 }: {
   params: { programId: string };
 }) {
-  const program = getProgramById(params.programId);
-  if (!program) {
-    notFound();
+  const [program, setProgram] = useState<Program | null>(null);
+  const [relatedCases, setRelatedCases] = useState<StudentCase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    Promise.all([
+      apiFetch<Program>(`/api/programs/${params.programId}`),
+      apiFetch<StudentCase[]>(`/api/programs/${params.programId}/cases`)
+    ])
+      .then(([programResponse, casesResponse]) => {
+        setProgram(programResponse.data);
+        setRelatedCases(casesResponse.data);
+        setError("");
+      })
+      .catch((fetchError) => {
+        setError(fetchError instanceof Error ? fetchError.message : "活动详情加载失败");
+      })
+      .finally(() => setLoading(false));
+  }, [params.programId]);
+
+  if (loading) {
+    return (
+      <PageShell>
+        <EmptyState description="正在请求后端活动详情接口。" title="加载活动详情中" />
+      </PageShell>
+    );
   }
 
-  const relatedCases = getRelatedCases(program);
+  if (error || !program) {
+    return (
+      <PageShell>
+        <EmptyState description={error || "活动不存在或未发布"} title="活动详情加载失败" />
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell>

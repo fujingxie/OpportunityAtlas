@@ -1,20 +1,48 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { Badge, Card, PageShell, TextLink } from "@/components/ui";
-import { mockCases } from "@/lib/mock/cases";
-import { getCaseById, getRelatedPrograms } from "@/lib/mock/service";
+"use client";
 
-export function generateStaticParams() {
-  return mockCases.map((studentCase) => ({ caseId: studentCase.id }));
-}
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Badge, Card, EmptyState, PageShell, TextLink } from "@/components/ui";
+import { apiFetch } from "@/lib/api-client";
+import type { Program, StudentCase } from "@/lib/types";
 
 export default function CaseDetailPage({ params }: { params: { caseId: string } }) {
-  const studentCase = getCaseById(params.caseId);
-  if (!studentCase) {
-    notFound();
+  const [studentCase, setStudentCase] = useState<StudentCase | null>(null);
+  const [relatedPrograms, setRelatedPrograms] = useState<Program[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    Promise.all([
+      apiFetch<StudentCase>(`/api/cases/${params.caseId}`),
+      apiFetch<Program[]>(`/api/cases/${params.caseId}/programs`)
+    ])
+      .then(([caseResponse, programResponse]) => {
+        setStudentCase(caseResponse.data);
+        setRelatedPrograms(programResponse.data);
+        setError("");
+      })
+      .catch((fetchError) => {
+        setError(fetchError instanceof Error ? fetchError.message : "案例详情加载失败");
+      })
+      .finally(() => setLoading(false));
+  }, [params.caseId]);
+
+  if (loading) {
+    return (
+      <PageShell>
+        <EmptyState description="正在请求后端案例详情接口。" title="加载案例详情中" />
+      </PageShell>
+    );
   }
 
-  const relatedPrograms = getRelatedPrograms(studentCase);
+  if (error || !studentCase) {
+    return (
+      <PageShell>
+        <EmptyState description={error || "案例不存在或未发布"} title="案例详情加载失败" />
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell>

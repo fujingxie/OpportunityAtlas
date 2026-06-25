@@ -1,5 +1,12 @@
 export type UserRole = "viewer" | "admin";
 
+export type CurrentUser = {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+};
+
 export type ProgramType =
   | "Competition"
   | "Summer School"
@@ -97,4 +104,3 @@ export type ImportJob = {
   createdAt: string;
   errorMessage?: string;
 };
-

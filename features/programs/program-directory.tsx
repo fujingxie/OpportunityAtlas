@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge, Card, EmptyState } from "@/components/ui";
-import { filterPrograms, getRelatedCases } from "@/lib/mock/service";
-import { mockPrograms } from "@/lib/mock/programs";
+import { apiFetch, toQueryString } from "@/lib/api-client";
 import type { Program } from "@/lib/types";
+import { includesAny, normalizeText } from "@/lib/utils";
 
 const programTypes = ["all", "Competition", "Summer School", "Research Program", "Other"];
 const subjects = ["all", "STEM", "商科/经济", "人文社科", "艺术", "综合"];
@@ -13,17 +13,90 @@ const grades = ["all", "G9", "G10", "G11", "G12"];
 const formats = ["all", "online", "offline", "hybrid"];
 const costs = ["all", "free", "paid"];
 
-export function ProgramDirectory({ initialQ = "" }: { initialQ?: string }) {
+export function ProgramDirectory({
+  initialQ = "",
+  initialPrograms
+}: {
+  initialQ?: string;
+  initialPrograms?: Program[];
+}) {
   const [q, setQ] = useState(initialQ);
   const [type, setType] = useState("all");
   const [subject, setSubject] = useState("all");
   const [grade, setGrade] = useState("all");
   const [format, setFormat] = useState("all");
   const [costType, setCostType] = useState("all");
+  const [programData, setProgramData] = useState<Program[]>(initialPrograms ?? []);
+  const [loading, setLoading] = useState(!initialPrograms?.length);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setLoading(true);
+    apiFetch<Program[]>(
+      `/api/programs${toQueryString({
+        q,
+        type,
+        subject,
+        grade,
+        format,
+        costType,
+        pageSize: 100
+      })}`
+    )
+      .then((response) => {
+        setProgramData(response.data);
+        setError("");
+      })
+      .catch((fetchError) => {
+        setError(fetchError instanceof Error ? fetchError.message : "活动数据加载失败");
+      })
+      .finally(() => setLoading(false));
+  }, [costType, format, grade, q, subject, type]);
 
   const programs = useMemo(
-    () => filterPrograms({ q, type, subject, grade, format, costType }),
-    [costType, format, grade, q, subject, type]
+    () =>
+      programData.filter((program) => {
+        const normalizedQ = normalizeText(q);
+        if (normalizedQ) {
+          const haystack = [
+            program.name,
+            program.organization,
+            program.description,
+            program.subjectArea,
+            program.location,
+            ...program.highlights,
+            ...program.tags
+          ].join(" ");
+          if (!normalizeText(haystack).includes(normalizedQ)) {
+            return false;
+          }
+        }
+
+        if (type !== "all" && program.type !== type) {
+          return false;
+        }
+        if (
+          subject !== "all" &&
+          !includesAny(program.subjectArea, [subject]) &&
+          !program.tags.includes(subject)
+        ) {
+          return false;
+        }
+        if (grade !== "all" && !program.gradeRange.includes(grade)) {
+          return false;
+        }
+        if (format !== "all" && program.format !== format) {
+          return false;
+        }
+        if (costType === "free" && !includesAny(program.costText, ["免费", "承担"])) {
+          return false;
+        }
+        if (costType === "paid" && includesAny(program.costText, ["免费", "承担"])) {
+          return false;
+        }
+        return true;
+      }),
+    [costType, format, grade, programData, q, subject, type]
   );
 
   return (
@@ -46,7 +119,7 @@ export function ProgramDirectory({ initialQ = "" }: { initialQ?: string }) {
               活动库
             </h2>
             <p className="mt-2 text-sm font-bold leading-7 text-secondary">
-              共检索到 {programs.length} 个活动，来自 `活动.docx` 的结构化 mock 数据。
+              共检索到 {programs.length} 个活动，数据来自后端接口。
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -68,7 +141,11 @@ export function ProgramDirectory({ initialQ = "" }: { initialQ?: string }) {
 
         <div className="grid gap-6 xl:grid-cols-[1fr_330px]">
           <div>
-            {programs.length ? (
+            {loading ? (
+              <EmptyState description="正在请求后端活动接口。" title="加载活动中" />
+            ) : error ? (
+              <EmptyState description={error} title="活动数据加载失败" />
+            ) : programs.length ? (
               <div className="space-y-5">
                 {programs.map((program) => (
                   <ProgramCardItem key={program.id} program={program} />
@@ -131,8 +208,6 @@ function FilterGroup({
 }
 
 function ProgramCardItem({ program }: { program: Program }) {
-  const relatedCases = getRelatedCases(program);
-
   return (
     <Card className="rounded-[28px] p-7">
       <div className="grid gap-6 lg:grid-cols-[1fr_190px]">
@@ -163,13 +238,13 @@ function ProgramCardItem({ program }: { program: Program }) {
         <div className="flex min-w-[180px] flex-col justify-between gap-4 border-t border-dashed border-border pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
           <div>
             <p className="text-5xl font-black tracking-normal text-primary">
-              {relatedCases.length}
+              {program.tags.length}
             </p>
-            <p className="text-sm font-black text-secondary">相关案例</p>
+            <p className="text-sm font-black text-secondary">资料标签</p>
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-border">
               <div
                 className="h-full rounded-full bg-[image:var(--gradient-primary)]"
-                style={{ width: `${Math.min(100, relatedCases.length * 28)}%` }}
+                style={{ width: `${Math.min(100, program.tags.length * 14)}%` }}
               />
             </div>
           </div>

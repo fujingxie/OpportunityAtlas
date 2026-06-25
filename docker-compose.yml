@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: opportunity-atlas-postgres
+    environment:
+      POSTGRES_USER: opportunity_atlas
+      POSTGRES_PASSWORD: opportunity_atlas
+      POSTGRES_DB: opportunity_atlas
+    ports:
+      - "5432:5432"
+    volumes:
+      - opportunity_atlas_pgdata:/var/lib/postgresql/data
+
+volumes:
+  opportunity_atlas_pgdata:

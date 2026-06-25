@@ -19,6 +19,8 @@ type ImportJobView = ImportJob & {
   items?: ImportItemView[];
 };
 
+type UploadSourceType = "program" | "case";
+
 type TagView = {
   id: string;
   name: string;
@@ -54,6 +56,7 @@ function useApiList<T>(path: string) {
 export function AdminImportPage() {
   const { items: jobs, loading, error, reload } = useApiList<ImportJobView>("/api/admin/import/jobs");
   const [file, setFile] = useState<File | null>(null);
+  const [sourceType, setSourceType] = useState<UploadSourceType>("program");
   const [uploading, setUploading] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
   const parsedCount = jobs.reduce((total, job) => total + (job.items?.length ?? 0), 0);
@@ -72,6 +75,7 @@ export function AdminImportPage() {
     setActionMessage("");
     const formData = new FormData();
     formData.set("file", file);
+    formData.set("sourceType", sourceType);
     try {
       await apiFetch<ImportJobView>("/api/admin/import/jobs", {
         method: "POST",
@@ -103,7 +107,7 @@ export function AdminImportPage() {
   return (
     <div>
       <PageHeading
-        description="上传文档后由后端解析为结构化草稿，前端当前使用 mock 任务展示流程状态。"
+        description="上传文档后由后端解析为结构化草稿，管理员可直接发布到活动库。"
         eyebrow="Admin"
         title="文档录入"
       />
@@ -120,6 +124,14 @@ export function AdminImportPage() {
               当前一期支持 DOCX 解析，PDF / XLSX / CSV 会返回不支持类型。
             </p>
             <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <select
+                className="min-h-11 rounded-sm border border-border bg-surface px-3 text-sm font-black text-ink"
+                onChange={(event) => setSourceType(event.target.value as UploadSourceType)}
+                value={sourceType}
+              >
+                <option value="program">活动文档</option>
+                <option value="case">案例文档</option>
+              </select>
               <input
                 accept=".docx"
                 className="max-w-[280px] rounded-sm border border-border bg-surface px-3 py-3 text-sm font-bold text-secondary"
@@ -170,7 +182,8 @@ export function AdminImportPage() {
                   ) : null}
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
-                      className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+                      className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={job.status === "failed" || job.sourceType !== "program"}
                       onClick={() => void publishJob(job.id)}
                       type="button"
                     >

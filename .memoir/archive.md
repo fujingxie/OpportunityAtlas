@@ -20,16 +20,17 @@
 - **服务端接口**：Next.js Route Handlers
 - **数据库**：PostgreSQL + Prisma 7
 - **鉴权**：邮箱/密码登录 + HttpOnly session cookie + `viewer/admin` 角色
-- **文档导入**：一期使用 `mammoth` 解析 DOCX 文本，规则抽取为活动草稿，不接 AI 解析
+- **文档导入**：一期使用 `mammoth` 解析 DOCX 文本，上传时通过 `sourceType` 显式区分活动/案例；当前已实现活动文档规则解析，不接 AI 解析
 
 **关键设计决策**：
 1. **App Router 架构**：使用 Next.js 14 的 App Router，路由结构按功能模块划分（`app/admin/`、`app/cases/`、`app/programs/`）
-2. **Mock 驱动开发**：当前所有数据接口通过 `lib/mock/service.ts` 提供，未接入后端 API（参见 `docs/backend-api.md` 设计文档）
+2. **Seed/Fixture 保留**：`lib/mock/*` 保留为 seed 数据源和测试 fixture，运行时公共页和管理端逐步走真实 `/api/*`
 3. **功能模块化**：`features/` 目录将业务逻辑组件与通用组件分离
 4. **路径别名**：使用 `@/` 映射到项目根目录，如 `@/lib/types`
 5. **权限守卫**：通过 `components/admin-guard.tsx` 实现基本的管理员路由保护
 6. **首页设计方向**：首页采用居中品牌叙事、搜索框、热门标签和两个视觉入口卡片（活动库 / 案例库），保留一屏式桌面构图，不再使用左右仪表盘式首页。
 7. **真实后端接入方向**：后端与前端同仓库，使用 `app/api/**/route.ts` 实现接口；数据库模型位于 `prisma/schema.prisma`，本地 seed 复用已有 mock 活动和案例数据。
+8. **文档导入分流**：管理端上传接口 `POST /api/admin/import/jobs` 使用 `sourceType=program|case|mixed|unknown` 区分文档类型；一期仅解析活动文档，案例文档字段模板确认后再实现解析器。
 
 ## 运行部署运维
 
@@ -64,7 +65,7 @@ npm run start
 4. **文档维护**：`docs/backend-api.md` 已提供后端接口契约，后续需随真实接口变更保持同步
 
 **已知问题**：
-1. **测试覆盖不全**：仅包含 `__tests__/` 中的三个测试文件（首页、mock服务、导航测试）
+1. **测试覆盖仍需扩展**：当前已有首页、导航、mock service 和活动 DOCX 解析测试，后续仍需补 API 鉴权、管理端交互和数据库链路测试
 2. **Mock 数据硬编码**：`lib/mock/` 下的数据文件可能随开发更新，与后端 API 设计存在偏差
 3. **UI 仍需持续精修**：当前已根据高保真稿和用户反馈调整主要页面，但首页、列表页和后台页仍可能继续迭代视觉细节
 4. **无错误处理**：当前代码缺少统一的错误边界和 loading 状态处理

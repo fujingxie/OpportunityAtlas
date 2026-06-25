@@ -236,7 +236,11 @@ DELETE /api/admin/relations/:relationId
 
 - 请求类型：`multipart/form-data`
 - 一期支持文件类型：`docx`
+- 表单字段：
+  - `file`：上传文件
+  - `sourceType`：`program | case | mixed | unknown`，前端上传时必须显式传入；当前已实现 `program` 解析
 - `pdf`、`xlsx`、`csv` 暂返回 `UNSUPPORTED_FILE_TYPE`
+- `case`、`mixed`、`unknown` 暂返回 `UNSUPPORTED_SOURCE_TYPE`，待案例文档字段模板确认后扩展
 - 最大文件大小：50MB
 - 返回 `ImportJob`
 

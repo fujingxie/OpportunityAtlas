@@ -27,14 +27,18 @@ type ProgramDraftForm = {
   type: Program["type"];
   organization: string;
   officialUrl: string;
+  applicationStartDate: string;
   applicationEndDate: string;
   programStartDate: string;
+  programEndDate: string;
   duration: string;
   gradeRange: string;
   subjectArea: string;
+  requirements: string;
   location: string;
   format: Program["format"];
   costText: string;
+  scholarshipText: string;
   description: string;
   coreTopicsText: string;
   highlightsText: string;
@@ -42,6 +46,8 @@ type ProgramDraftForm = {
   tagsText: string;
   applicationMethod: string;
   capacityLimit: string;
+  status: Program["status"];
+  source: Program["source"];
 };
 
 type TagView = {
@@ -56,21 +62,27 @@ const emptyProgramDraftForm: ProgramDraftForm = {
   type: "Other",
   organization: "",
   officialUrl: "",
+  applicationStartDate: "",
   applicationEndDate: "",
   programStartDate: "",
+  programEndDate: "",
   duration: "",
   gradeRange: "",
   subjectArea: "",
+  requirements: "",
   location: "",
   format: "offline",
   costText: "",
+  scholarshipText: "",
   description: "",
   coreTopicsText: "",
   highlightsText: "",
   requiredMaterialsText: "",
   tagsText: "",
   applicationMethod: "",
-  capacityLimit: ""
+  capacityLimit: "",
+  status: "draft",
+  source: "manual"
 };
 
 const programTypeOptions: Array<{ label: string; value: Program["type"] }> = [
@@ -84,6 +96,12 @@ const programFormatOptions: Array<{ label: string; value: Program["format"] }> =
   { label: "线下", value: "offline" },
   { label: "线上", value: "online" },
   { label: "混合", value: "hybrid" }
+];
+
+const programStatusOptions: Array<{ label: string; value: Program["status"] }> = [
+  { label: "草稿", value: "draft" },
+  { label: "已发布", value: "published" },
+  { label: "已归档", value: "archived" }
 ];
 
 function asRecord(value: unknown) {
@@ -104,6 +122,20 @@ function isProgramFormat(value: unknown): value is Program["format"] {
   return value === "online" || value === "offline" || value === "hybrid";
 }
 
+function isProgramStatus(value: unknown): value is Program["status"] {
+  return (
+    value === "draft" ||
+    value === "pending_review" ||
+    value === "published" ||
+    value === "rejected" ||
+    value === "archived"
+  );
+}
+
+function isProgramSource(value: unknown): value is Program["source"] {
+  return value === "document_import" || value === "manual";
+}
+
 function arrayToText(value: unknown) {
   return Array.isArray(value) ? value.filter((item) => typeof item === "string").join("、") : "";
 }
@@ -122,39 +154,53 @@ function toProgramDraftForm(value: unknown): ProgramDraftForm {
     type: isProgramType(data.type) ? data.type : "Other",
     organization: asString(data.organization),
     officialUrl: asString(data.officialUrl),
+    applicationStartDate: asString(data.applicationStartDate),
     applicationEndDate: asString(data.applicationEndDate),
     programStartDate: asString(data.programStartDate),
+    programEndDate: asString(data.programEndDate),
     duration: asString(data.duration),
     gradeRange: asString(data.gradeRange),
     subjectArea: asString(data.subjectArea),
+    requirements: asString(data.requirements),
     location: asString(data.location),
     format: isProgramFormat(data.format) ? data.format : "offline",
     costText: asString(data.costText),
+    scholarshipText: asString(data.scholarshipText),
     description: asString(data.description),
     coreTopicsText: arrayToText(data.coreTopics),
     highlightsText: arrayToText(data.highlights),
     requiredMaterialsText: arrayToText(data.requiredMaterials),
     tagsText: arrayToText(data.tags),
     applicationMethod: asString(data.applicationMethod),
-    capacityLimit: asString(data.capacityLimit)
+    capacityLimit: asString(data.capacityLimit),
+    status: isProgramStatus(data.status) ? data.status : "draft",
+    source: isProgramSource(data.source) ? data.source : "manual"
   };
 }
 
-function toProgramDraftData(original: unknown, form: ProgramDraftForm) {
+function toProgramDraftData(
+  original: unknown,
+  form: ProgramDraftForm,
+  overrides: Partial<Pick<Program, "status" | "source">> = {}
+) {
   return {
     ...asRecord(original),
     name: form.name.trim(),
     type: form.type,
     organization: form.organization.trim() || "待补充",
     officialUrl: form.officialUrl.trim(),
+    applicationStartDate: form.applicationStartDate.trim(),
     applicationEndDate: form.applicationEndDate.trim(),
     programStartDate: form.programStartDate.trim(),
+    programEndDate: form.programEndDate.trim(),
     duration: form.duration.trim(),
     gradeRange: form.gradeRange.trim() || "待补充",
     subjectArea: form.subjectArea.trim() || "综合",
+    requirements: form.requirements.trim(),
     location: form.location.trim() || "待补充",
     format: form.format,
     costText: form.costText.trim(),
+    scholarshipText: form.scholarshipText.trim(),
     description: form.description.trim() || "待补充",
     coreTopics: textToArray(form.coreTopicsText),
     highlights: textToArray(form.highlightsText),
@@ -162,8 +208,8 @@ function toProgramDraftData(original: unknown, form: ProgramDraftForm) {
     tags: textToArray(form.tagsText),
     applicationMethod: form.applicationMethod.trim(),
     capacityLimit: form.capacityLimit.trim(),
-    status: "draft",
-    source: "document_import"
+    status: overrides.status ?? form.status,
+    source: overrides.source ?? form.source
   };
 }
 
@@ -331,7 +377,10 @@ export function AdminImportPage() {
           body: JSON.stringify({
             title: draftForm.name.trim(),
             status: "draft",
-            parsedData: toProgramDraftData(selectedItem.parsedData, draftForm)
+            parsedData: toProgramDraftData(selectedItem.parsedData, draftForm, {
+              status: "draft",
+              source: "document_import"
+            })
           })
         }
       );
@@ -663,34 +712,204 @@ export function AdminImportPage() {
 }
 
 export function AdminProgramsPage() {
-  const { items: programs, loading, error } = useApiList<Program>("/api/admin/programs?pageSize=100");
+  const { items: programs, loading, error, reload } = useApiList<Program>("/api/admin/programs?pageSize=100");
+  const [mode, setMode] = useState<"create" | "edit">("create");
+  const [selectedProgramId, setSelectedProgramId] = useState("");
+  const [programForm, setProgramForm] = useState<ProgramDraftForm>(emptyProgramDraftForm);
+  const [savingProgram, setSavingProgram] = useState(false);
+  const [programMessage, setProgramMessage] = useState("");
+  const selectedProgram = programs.find((program) => program.id === selectedProgramId);
+
+  const startCreateProgram = () => {
+    setMode("create");
+    setSelectedProgramId("");
+    setProgramForm(emptyProgramDraftForm);
+    setProgramMessage("");
+  };
+
+  const startEditProgram = (program: Program) => {
+    setMode("edit");
+    setSelectedProgramId(program.id);
+    setProgramForm(toProgramDraftForm(program));
+    setProgramMessage("");
+  };
+
+  const updateProgramField = <K extends keyof ProgramDraftForm>(
+    field: K,
+    value: ProgramDraftForm[K]
+  ) => {
+    setProgramForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  };
+
+  const saveProgram = async () => {
+    if (!programForm.name.trim()) {
+      setProgramMessage("活动名称不能为空");
+      return;
+    }
+
+    setSavingProgram(true);
+    setProgramMessage("");
+    const payload = toProgramDraftData(selectedProgram ?? {}, programForm, {
+      source: mode === "create" ? "manual" : programForm.source
+    });
+    try {
+      const response = await apiFetch<Program>(
+        mode === "edit" && selectedProgram ? `/api/admin/programs/${selectedProgram.id}` : "/api/admin/programs",
+        {
+          method: mode === "edit" && selectedProgram ? "PATCH" : "POST",
+          body: JSON.stringify(payload)
+        }
+      );
+      setProgramMessage(mode === "edit" ? "活动已保存。" : "活动已创建。");
+      setMode("edit");
+      setSelectedProgramId(response.data.id);
+      setProgramForm(toProgramDraftForm(response.data));
+      await reload();
+    } catch (saveError) {
+      setProgramMessage(saveError instanceof Error ? saveError.message : "保存失败");
+    } finally {
+      setSavingProgram(false);
+    }
+  };
+
+  const archiveProgram = async () => {
+    if (!selectedProgram) {
+      return;
+    }
+    if (!window.confirm(`确认归档「${selectedProgram.name}」？`)) {
+      return;
+    }
+
+    setSavingProgram(true);
+    setProgramMessage("");
+    try {
+      await apiFetch<Program>(`/api/admin/programs/${selectedProgram.id}`, {
+        method: "DELETE"
+      });
+      setProgramMessage("活动已归档。");
+      await reload();
+      startCreateProgram();
+    } catch (archiveError) {
+      setProgramMessage(archiveError instanceof Error ? archiveError.message : "归档失败");
+    } finally {
+      setSavingProgram(false);
+    }
+  };
 
   return (
     <div>
       <PageHeading
         description="运营人员维护活动资料、完整度和发布状态。"
         eyebrow="Admin"
+        actions={
+          <button
+            className="rounded-sm bg-primary px-4 py-2 text-sm font-black text-white"
+            onClick={startCreateProgram}
+            type="button"
+          >
+            新增活动
+          </button>
+        }
         title="活动管理"
       />
-      <Card>
-        {loading ? <p className="text-sm font-bold text-secondary">加载活动列表中...</p> : null}
-        {error ? <p className="text-sm font-bold text-danger">{error}</p> : null}
-        {!loading && !error ? (
-          <DataTable
-            headers={["活动名称", "类型", "形式", "完整度", "状态", "操作"]}
-            rows={programs.slice(0, 12).map((program) => [
-              program.name,
-              program.type,
-              program.format,
-              `${program.completeness}%`,
-              program.status,
-              <TextLink href={`/programs/${program.id}`} key={program.id}>
-                查看
-              </TextLink>
-            ])}
-          />
-        ) : null}
-      </Card>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_460px]">
+        <Card>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-extrabold tracking-normal text-ink">活动列表</h2>
+              <p className="mt-1 text-sm font-bold text-secondary">共 {programs.length} 条活动</p>
+            </div>
+            <button
+              className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+              onClick={() => void reload()}
+              type="button"
+            >
+              刷新
+            </button>
+          </div>
+          {loading ? <p className="mt-4 text-sm font-bold text-secondary">加载活动列表中...</p> : null}
+          {error ? <p className="mt-4 text-sm font-bold text-danger">{error}</p> : null}
+          {!loading && !error ? (
+            <div className="mt-4">
+              <DataTable
+                headers={["活动名称", "类型", "形式", "完整度", "状态", "操作"]}
+                rows={programs.map((program) => [
+                  <button
+                    className="text-left font-extrabold text-ink hover:text-primary"
+                    key={`edit-${program.id}`}
+                    onClick={() => startEditProgram(program)}
+                    type="button"
+                  >
+                    {program.name}
+                  </button>,
+                  program.type,
+                  program.format,
+                  `${program.completeness}%`,
+                  <Badge key={`status-${program.id}`} tone={statusTone(program.status)}>
+                    {program.status}
+                  </Badge>,
+                  <div className="flex flex-wrap gap-2" key={`actions-${program.id}`}>
+                    <button
+                      className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+                      onClick={() => startEditProgram(program)}
+                      type="button"
+                    >
+                      编辑
+                    </button>
+                    <TextLink href={`/programs/${program.id}`}>查看</TextLink>
+                  </div>
+                ])}
+              />
+            </div>
+          ) : null}
+        </Card>
+
+        <Card>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-extrabold tracking-normal text-ink">
+                {mode === "create" ? "新增活动" : "编辑活动"}
+              </h2>
+              <p className="mt-1 text-sm font-bold text-secondary">
+                {mode === "create" ? "手动录入运营活动资料" : selectedProgram?.name ?? "选择活动后编辑"}
+              </p>
+            </div>
+            {mode === "edit" && selectedProgram ? (
+              <Badge tone={statusTone(selectedProgram.status)}>{selectedProgram.status}</Badge>
+            ) : null}
+          </div>
+
+          <div className="mt-5 space-y-4">
+            <ProgramFormFields form={programForm} onFieldChange={updateProgramField} showStatus />
+            {programMessage ? (
+              <p className="text-sm font-bold text-secondary">{programMessage}</p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="rounded-sm bg-primary px-4 py-2 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={savingProgram}
+                onClick={() => void saveProgram()}
+                type="button"
+              >
+                {savingProgram ? "保存中" : mode === "create" ? "创建活动" : "保存修改"}
+              </button>
+              {mode === "edit" && selectedProgram ? (
+                <button
+                  className="rounded-sm border border-border bg-surface px-4 py-2 text-sm font-black text-danger disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={savingProgram || selectedProgram.status === "archived"}
+                  onClick={() => void archiveProgram()}
+                  type="button"
+                >
+                  归档活动
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -769,6 +988,152 @@ function AdminStat({ label, value }: { label: string; value: string }) {
     <div className="flex justify-between gap-4 border-b border-border pb-3 last:border-b-0 last:pb-0">
       <dt className="text-sm font-bold text-secondary">{label}</dt>
       <dd className="text-sm font-extrabold text-ink">{value}</dd>
+    </div>
+  );
+}
+
+function ProgramFormFields({
+  form,
+  onFieldChange,
+  showStatus = false
+}: {
+  form: ProgramDraftForm;
+  onFieldChange: <K extends keyof ProgramDraftForm>(field: K, value: ProgramDraftForm[K]) => void;
+  showStatus?: boolean;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <DraftTextField
+          label="活动名称"
+          onChange={(value) => onFieldChange("name", value)}
+          value={form.name}
+        />
+        <DraftTextField
+          label="主办方"
+          onChange={(value) => onFieldChange("organization", value)}
+          value={form.organization}
+        />
+        <DraftSelectField
+          label="活动类型"
+          onChange={(value) => onFieldChange("type", value as Program["type"])}
+          options={programTypeOptions}
+          value={form.type}
+        />
+        <DraftSelectField
+          label="形式"
+          onChange={(value) => onFieldChange("format", value as Program["format"])}
+          options={programFormatOptions}
+          value={form.format}
+        />
+        {showStatus ? (
+          <DraftSelectField
+            label="状态"
+            onChange={(value) => onFieldChange("status", value as Program["status"])}
+            options={programStatusOptions}
+            value={form.status}
+          />
+        ) : null}
+        <DraftTextField
+          label="官网"
+          onChange={(value) => onFieldChange("officialUrl", value)}
+          value={form.officialUrl}
+        />
+        <DraftTextField
+          label="适合年级"
+          onChange={(value) => onFieldChange("gradeRange", value)}
+          value={form.gradeRange}
+        />
+        <DraftTextField
+          label="学科方向"
+          onChange={(value) => onFieldChange("subjectArea", value)}
+          value={form.subjectArea}
+        />
+        <DraftTextField
+          label="地点"
+          onChange={(value) => onFieldChange("location", value)}
+          value={form.location}
+        />
+        <DraftTextField
+          label="申请开始"
+          onChange={(value) => onFieldChange("applicationStartDate", value)}
+          value={form.applicationStartDate}
+        />
+        <DraftTextField
+          label="报名截止"
+          onChange={(value) => onFieldChange("applicationEndDate", value)}
+          value={form.applicationEndDate}
+        />
+        <DraftTextField
+          label="活动开始"
+          onChange={(value) => onFieldChange("programStartDate", value)}
+          value={form.programStartDate}
+        />
+        <DraftTextField
+          label="活动结束"
+          onChange={(value) => onFieldChange("programEndDate", value)}
+          value={form.programEndDate}
+        />
+        <DraftTextField
+          label="周期"
+          onChange={(value) => onFieldChange("duration", value)}
+          value={form.duration}
+        />
+        <DraftTextField
+          label="费用"
+          onChange={(value) => onFieldChange("costText", value)}
+          value={form.costText}
+        />
+        <DraftTextField
+          label="奖学金/资助"
+          onChange={(value) => onFieldChange("scholarshipText", value)}
+          value={form.scholarshipText}
+        />
+        <DraftTextField
+          label="名额限制"
+          onChange={(value) => onFieldChange("capacityLimit", value)}
+          value={form.capacityLimit}
+        />
+      </div>
+      <DraftTextField
+        label="申请条件"
+        onChange={(value) => onFieldChange("requirements", value)}
+        textarea
+        value={form.requirements}
+      />
+      <DraftTextField
+        label="活动简介"
+        onChange={(value) => onFieldChange("description", value)}
+        textarea
+        value={form.description}
+      />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <DraftTextField
+          label="核心主题"
+          onChange={(value) => onFieldChange("coreTopicsText", value)}
+          value={form.coreTopicsText}
+        />
+        <DraftTextField
+          label="特色亮点"
+          onChange={(value) => onFieldChange("highlightsText", value)}
+          value={form.highlightsText}
+        />
+        <DraftTextField
+          label="申请材料"
+          onChange={(value) => onFieldChange("requiredMaterialsText", value)}
+          value={form.requiredMaterialsText}
+        />
+        <DraftTextField
+          label="标签"
+          onChange={(value) => onFieldChange("tagsText", value)}
+          value={form.tagsText}
+        />
+        <DraftTextField
+          label="报名方式"
+          onChange={(value) => onFieldChange("applicationMethod", value)}
+          value={form.applicationMethod}
+        />
+      </div>
     </div>
   );
 }

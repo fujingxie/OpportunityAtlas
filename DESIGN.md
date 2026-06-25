@@ -153,6 +153,8 @@
 **Container:**
 - Max width: 1440px
 - Padding: 32px desktop, 16px mobile
+- Home page uses a single viewport-height composition under the 76px topbar and must not add an extra outer board/card around the hero layout.
+- Home hero follows a centered brand/search layout: title, short positioning copy, search form, quick tags, and two visual entry cards for activity and case browsing.
 - Public list pages use a large white rounded board with left filters and a soft-blue content area.
 - Admin uses a dark navy sidebar with dense white data panels.
 

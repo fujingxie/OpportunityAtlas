@@ -13,8 +13,8 @@ const grades = ["all", "G9", "G10", "G11", "G12"];
 const formats = ["all", "online", "offline", "hybrid"];
 const costs = ["all", "free", "paid"];
 
-export function ProgramDirectory() {
-  const [q, setQ] = useState("");
+export function ProgramDirectory({ initialQ = "" }: { initialQ?: string }) {
+  const [q, setQ] = useState(initialQ);
   const [type, setType] = useState("all");
   const [subject, setSubject] = useState("all");
   const [grade, setGrade] = useState("all");

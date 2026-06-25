@@ -73,6 +73,12 @@ type TagView = {
   enabled: boolean;
 };
 
+type TagDraftForm = {
+  name: string;
+  group: TagView["group"];
+  enabled: boolean;
+};
+
 const emptyProgramDraftForm: ProgramDraftForm = {
   name: "",
   type: "Other",
@@ -117,6 +123,12 @@ const emptyCaseDraftForm: CaseDraftForm = {
   status: "draft"
 };
 
+const emptyTagDraftForm: TagDraftForm = {
+  name: "",
+  group: "subject",
+  enabled: true
+};
+
 const programTypeOptions: Array<{ label: string; value: Program["type"] }> = [
   { label: "竞赛", value: "Competition" },
   { label: "夏校", value: "Summer School" },
@@ -154,6 +166,19 @@ const caseStatusOptions: Array<{ label: string; value: StudentCase["status"] }> 
   { label: "已发布", value: "published" },
   { label: "已归档", value: "archived" }
 ];
+
+const tagGroupOptions: Array<{ label: string; value: TagView["group"] }> = [
+  { label: "活动类型", value: "program_type" },
+  { label: "学科", value: "subject" },
+  { label: "年级", value: "grade" },
+  { label: "申请方向", value: "major" },
+  { label: "地点", value: "location" },
+  { label: "形式", value: "format" }
+];
+
+function tagGroupLabel(group: string) {
+  return tagGroupOptions.find((option) => option.value === group)?.label ?? group;
+}
 
 function asRecord(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -1252,37 +1277,264 @@ export function AdminCasesPage() {
 }
 
 export function AdminTagsPage() {
-  const { items: tags, loading, error } = useApiList<TagView>("/api/admin/tags");
+  const { items: tags, loading, error, reload } = useApiList<TagView>("/api/admin/tags");
+  const [mode, setMode] = useState<"create" | "edit">("create");
+  const [selectedTagId, setSelectedTagId] = useState("");
+  const [tagForm, setTagForm] = useState<TagDraftForm>(emptyTagDraftForm);
+  const [savingTag, setSavingTag] = useState(false);
+  const [tagMessage, setTagMessage] = useState("");
+  const selectedTag = tags.find((tag) => tag.id === selectedTagId);
+
+  const startCreateTag = () => {
+    setMode("create");
+    setSelectedTagId("");
+    setTagForm(emptyTagDraftForm);
+    setTagMessage("");
+  };
+
+  const startEditTag = (tag: TagView) => {
+    setMode("edit");
+    setSelectedTagId(tag.id);
+    setTagForm({
+      name: tag.name,
+      group: tag.group,
+      enabled: tag.enabled
+    });
+    setTagMessage("");
+  };
+
+  const updateTagField = <K extends keyof TagDraftForm>(field: K, value: TagDraftForm[K]) => {
+    setTagForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  };
+
+  const saveTag = async () => {
+    if (!tagForm.name.trim()) {
+      setTagMessage("标签名称不能为空");
+      return;
+    }
+
+    setSavingTag(true);
+    setTagMessage("");
+    try {
+      const response = await apiFetch<TagView>(
+        mode === "edit" && selectedTag ? `/api/admin/tags/${selectedTag.id}` : "/api/admin/tags",
+        {
+          method: mode === "edit" && selectedTag ? "PATCH" : "POST",
+          body: JSON.stringify({
+            name: tagForm.name.trim(),
+            group: tagForm.group,
+            enabled: tagForm.enabled
+          })
+        }
+      );
+      setTagMessage(mode === "edit" ? "标签已保存。" : "标签已创建。");
+      setMode("edit");
+      setSelectedTagId(response.data.id);
+      setTagForm({
+        name: response.data.name,
+        group: response.data.group,
+        enabled: response.data.enabled
+      });
+      await reload();
+    } catch (saveError) {
+      setTagMessage(saveError instanceof Error ? saveError.message : "保存失败");
+    } finally {
+      setSavingTag(false);
+    }
+  };
+
+  const toggleSelectedTag = async () => {
+    if (!selectedTag) {
+      return;
+    }
+
+    setSavingTag(true);
+    setTagMessage("");
+    try {
+      const response = await apiFetch<TagView>(`/api/admin/tags/${selectedTag.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          enabled: !selectedTag.enabled
+        })
+      });
+      setTagMessage(response.data.enabled ? "标签已启用。" : "标签已停用。");
+      setTagForm({
+        name: response.data.name,
+        group: response.data.group,
+        enabled: response.data.enabled
+      });
+      await reload();
+    } catch (toggleError) {
+      setTagMessage(toggleError instanceof Error ? toggleError.message : "操作失败");
+    } finally {
+      setSavingTag(false);
+    }
+  };
+
+  const disableSelectedTag = async () => {
+    if (!selectedTag) {
+      return;
+    }
+    if (!window.confirm(`确认停用「${selectedTag.name}」？`)) {
+      return;
+    }
+
+    setSavingTag(true);
+    setTagMessage("");
+    try {
+      await apiFetch<TagView>(`/api/admin/tags/${selectedTag.id}`, {
+        method: "DELETE"
+      });
+      setTagMessage("标签已停用。");
+      await reload();
+      startCreateTag();
+    } catch (disableError) {
+      setTagMessage(disableError instanceof Error ? disableError.message : "停用失败");
+    } finally {
+      setSavingTag(false);
+    }
+  };
 
   return (
     <div>
       <PageHeading
         description="维护基础标签体系：活动类型、学科、年级、地点和形式。不包含规则权重。"
         eyebrow="Admin"
+        actions={
+          <button
+            className="rounded-sm bg-primary px-4 py-2 text-sm font-black text-white"
+            onClick={startCreateTag}
+            type="button"
+          >
+            新增标签
+          </button>
+        }
         title="标签管理"
       />
-      <Card>
-        {loading ? <p className="text-sm font-bold text-secondary">加载标签中...</p> : null}
-        {error ? <p className="text-sm font-bold text-danger">{error}</p> : null}
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {tags.map((tag) => (
-            <div className="rounded-sm border border-border bg-soft p-4" key={tag.id}>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-extrabold text-ink">{tag.name}</p>
-                  <p className="mt-1 text-sm font-bold text-secondary">{tag.group}</p>
-                </div>
-                <Badge tone={tag.enabled ? "green" : "amber"}>
-                  {tag.enabled ? "enabled" : "disabled"}
-                </Badge>
-              </div>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <Card>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-extrabold tracking-normal text-ink">标签列表</h2>
+              <p className="mt-1 text-sm font-bold text-secondary">共 {tags.length} 个标签</p>
             </div>
-          ))}
-        </div>
-      </Card>
-      <p className="mt-4 text-sm leading-7 text-secondary">
-        后端接口参考项目文件 `docs/backend-api.md`。
-      </p>
+            <button
+              className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+              onClick={() => void reload()}
+              type="button"
+            >
+              刷新
+            </button>
+          </div>
+          {loading ? <p className="mt-4 text-sm font-bold text-secondary">加载标签中...</p> : null}
+          {error ? <p className="mt-4 text-sm font-bold text-danger">{error}</p> : null}
+          {!loading && !error ? (
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {tags.map((tag) => (
+                <button
+                  className={`rounded-sm border p-4 text-left transition ${
+                    tag.id === selectedTagId
+                      ? "border-primary bg-primary/10"
+                      : "border-border bg-soft hover:border-primary"
+                  }`}
+                  key={tag.id}
+                  onClick={() => startEditTag(tag)}
+                  type="button"
+                >
+                  <span className="flex items-center justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block truncate font-extrabold text-ink">{tag.name}</span>
+                      <span className="mt-1 block text-sm font-bold text-secondary">
+                        {tagGroupLabel(tag.group)}
+                      </span>
+                    </span>
+                    <Badge tone={tag.enabled ? "green" : "amber"}>
+                      {tag.enabled ? "enabled" : "disabled"}
+                    </Badge>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </Card>
+
+        <Card>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-extrabold tracking-normal text-ink">
+                {mode === "create" ? "新增标签" : "编辑标签"}
+              </h2>
+              <p className="mt-1 text-sm font-bold text-secondary">
+                {mode === "create" ? "维护筛选和归一化字典" : selectedTag?.name ?? "选择标签后编辑"}
+              </p>
+            </div>
+            {mode === "edit" && selectedTag ? (
+              <Badge tone={selectedTag.enabled ? "green" : "amber"}>
+                {selectedTag.enabled ? "enabled" : "disabled"}
+              </Badge>
+            ) : null}
+          </div>
+
+          <div className="mt-5 space-y-4">
+            <DraftTextField
+              label="标签名称"
+              onChange={(value) => updateTagField("name", value)}
+              value={tagForm.name}
+            />
+            <DraftSelectField
+              label="标签分组"
+              onChange={(value) => updateTagField("group", value)}
+              options={tagGroupOptions}
+              value={tagForm.group}
+            />
+            <label className="flex items-center gap-3 rounded-sm border border-border bg-soft px-3 py-3">
+              <input
+                checked={tagForm.enabled}
+                className="h-4 w-4 accent-primary"
+                onChange={(event) => updateTagField("enabled", event.target.checked)}
+                type="checkbox"
+              />
+              <span className="text-sm font-extrabold text-ink">启用标签</span>
+            </label>
+            {tagMessage ? (
+              <p className="text-sm font-bold text-secondary">{tagMessage}</p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="rounded-sm bg-primary px-4 py-2 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={savingTag}
+                onClick={() => void saveTag()}
+                type="button"
+              >
+                {savingTag ? "保存中" : mode === "create" ? "创建标签" : "保存修改"}
+              </button>
+              {mode === "edit" && selectedTag ? (
+                <button
+                  className="rounded-sm border border-border bg-surface px-4 py-2 text-sm font-black text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={savingTag}
+                  onClick={() => void toggleSelectedTag()}
+                  type="button"
+                >
+                  {selectedTag.enabled ? "停用" : "启用"}
+                </button>
+              ) : null}
+              {mode === "edit" && selectedTag?.enabled ? (
+                <button
+                  className="rounded-sm border border-border bg-surface px-4 py-2 text-sm font-black text-danger disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={savingTag}
+                  onClick={() => void disableSelectedTag()}
+                  type="button"
+                >
+                  移除
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

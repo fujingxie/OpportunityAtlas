@@ -250,7 +250,11 @@ DELETE /api/admin/relations/:relationId
 
 `PATCH /api/admin/import/jobs/:jobId/items/:itemId`
 
-用于修改单条解析预览字段。后端需要保存人工校对后的版本。
+用于修改单条解析预览字段。后端需要保存人工校对后的版本，也支持将 `status` 改为 `rejected` 以跳过发布。
+
+`POST /api/admin/import/jobs/:jobId/publish`
+
+发布活动导入任务。当前仅支持 `sourceType=program`；后端只发布 `status=draft` 的活动预览项，已发布或已跳过的预览项不会重复入库。
 
 ### 3.2 活动管理
 

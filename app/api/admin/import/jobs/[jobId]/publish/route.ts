@@ -20,11 +20,14 @@ export async function POST(_request: Request, { params }: { params: { jobId: str
   if (!job) {
     return fail("NOT_FOUND", "导入任务不存在", 404);
   }
+  if (job.sourceType !== "program") {
+    return fail("UNSUPPORTED_SOURCE_TYPE", "当前版本仅支持发布活动导入任务", 422);
+  }
 
   try {
     const updated = await getPrisma().$transaction(async (tx) => {
       for (const item of job.items) {
-        if (item.itemType !== "program") {
+        if (item.itemType !== "program" || item.status !== "draft") {
           continue;
         }
         await tx.program.create({

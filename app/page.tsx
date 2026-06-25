@@ -30,7 +30,7 @@ export default function HomePage() {
       <section className="mx-auto flex max-w-[1180px] flex-col items-center">
         <div className="animate-enter flex max-w-3xl flex-col items-center text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-surface px-5 py-2 text-sm font-black text-primary shadow-card">
-            <LogoMark className="h-5 w-5" />
+            <LogoMark className="h-5 w-5 rounded-[5px]" />
             Opportunity Atlas
           </div>
           <h1 className="mt-14 max-w-3xl text-[44px] font-black leading-[1.08] tracking-normal text-ink sm:text-[56px] lg:mt-16">
@@ -97,9 +97,9 @@ export default function HomePage() {
               />
               <div className="absolute inset-0 bg-navy/70" />
               <div className="relative flex h-full min-h-[210px] flex-col justify-end p-7 text-white">
-                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-md bg-white/14 text-white">
+                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-md text-white">
                   {card.icon === "program" ? (
-                    <LogoMark className="h-9 w-9" />
+                    <LogoMark className="h-12 w-12 rounded-md shadow-card" />
                   ) : (
                     <span className="text-2xl font-black">C</span>
                   )}

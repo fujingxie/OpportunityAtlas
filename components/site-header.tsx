@@ -16,9 +16,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-border/80 bg-surface/90 backdrop-blur-md">
       <div className="mx-auto grid min-h-[76px] max-w-[1440px] grid-cols-1 items-center gap-4 px-5 py-3 md:grid-cols-[1fr_auto_1fr] md:px-9">
         <Link className="flex min-h-11 items-center gap-3 rounded-sm" href="/">
-          <span className="flex h-10 w-10 items-center justify-center rounded-sm bg-[image:var(--gradient-primary)] text-white shadow-card">
-            <LogoMark className="h-7 w-7" />
-          </span>
+          <LogoMark className="h-11 w-11 shrink-0 rounded-[12px] shadow-card" priority />
           <span className="text-xl font-black tracking-normal text-ink">
             Opportunity Atlas
           </span>

@@ -383,6 +383,13 @@ function statusTone(status: string): "default" | "blue" | "green" | "amber" | "r
   return "amber";
 }
 
+function updateSelection(current: string[], id: string, checked: boolean) {
+  if (checked) {
+    return current.includes(id) ? current : [...current, id];
+  }
+  return current.filter((itemId) => itemId !== id);
+}
+
 function useApiList<T>(path: string) {
   const [items, setItems] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
@@ -875,7 +882,11 @@ export function AdminProgramsPage() {
   const [programForm, setProgramForm] = useState<ProgramDraftForm>(emptyProgramDraftForm);
   const [savingProgram, setSavingProgram] = useState(false);
   const [programMessage, setProgramMessage] = useState("");
+  const [selectedProgramIds, setSelectedProgramIds] = useState<string[]>([]);
   const selectedProgram = programs.find((program) => program.id === selectedProgramId);
+  const selectableProgramIds = programs
+    .filter((program) => program.status !== "archived")
+    .map((program) => program.id);
 
   const startCreateProgram = () => {
     setMode("create");
@@ -956,6 +967,39 @@ export function AdminProgramsPage() {
     }
   };
 
+  const bulkArchivePrograms = async () => {
+    const ids = selectedProgramIds.filter((id) => selectableProgramIds.includes(id));
+    if (!ids.length) {
+      setProgramMessage("请先选择要归档的活动");
+      return;
+    }
+    if (!window.confirm(`确认批量归档 ${ids.length} 个活动？`)) {
+      return;
+    }
+
+    setSavingProgram(true);
+    setProgramMessage("");
+    try {
+      await Promise.all(
+        ids.map((programId) =>
+          apiFetch<Program>(`/api/admin/programs/${programId}`, {
+            method: "DELETE"
+          })
+        )
+      );
+      setSelectedProgramIds([]);
+      setProgramMessage(`已归档 ${ids.length} 个活动。`);
+      await reload();
+      if (selectedProgram && ids.includes(selectedProgram.id)) {
+        startCreateProgram();
+      }
+    } catch (bulkError) {
+      setProgramMessage(bulkError instanceof Error ? bulkError.message : "批量归档失败");
+    } finally {
+      setSavingProgram(false);
+    }
+  };
+
   return (
     <div>
       <PageHeading
@@ -977,23 +1021,58 @@ export function AdminProgramsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-extrabold tracking-normal text-ink">活动列表</h2>
-              <p className="mt-1 text-sm font-bold text-secondary">共 {programs.length} 条活动</p>
+              <p className="mt-1 text-sm font-bold text-secondary">
+                共 {programs.length} 条活动 / 已选 {selectedProgramIds.length}
+              </p>
             </div>
-            <button
-              className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
-              onClick={() => void reload()}
-              type="button"
-            >
-              刷新
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+                onClick={() =>
+                  setSelectedProgramIds(
+                    selectedProgramIds.length === selectableProgramIds.length ? [] : selectableProgramIds
+                  )
+                }
+                type="button"
+              >
+                {selectedProgramIds.length === selectableProgramIds.length ? "取消全选" : "全选"}
+              </button>
+              <button
+                className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={savingProgram || selectedProgramIds.length === 0}
+                onClick={() => void bulkArchivePrograms()}
+                type="button"
+              >
+                批量归档
+              </button>
+              <button
+                className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+                onClick={() => void reload()}
+                type="button"
+              >
+                刷新
+              </button>
+            </div>
           </div>
           {loading ? <p className="mt-4 text-sm font-bold text-secondary">加载活动列表中...</p> : null}
           {error ? <p className="mt-4 text-sm font-bold text-danger">{error}</p> : null}
           {!loading && !error ? (
             <div className="mt-4">
               <DataTable
-                headers={["活动名称", "类型", "形式", "完整度", "状态", "操作"]}
+                headers={["选择", "活动名称", "类型", "形式", "完整度", "状态", "操作"]}
                 rows={programs.map((program) => [
+                  <input
+                    checked={selectedProgramIds.includes(program.id)}
+                    className="h-4 w-4 accent-primary"
+                    disabled={program.status === "archived"}
+                    key={`select-${program.id}`}
+                    onChange={(event) =>
+                      setSelectedProgramIds((current) =>
+                        updateSelection(current, program.id, event.target.checked)
+                      )
+                    }
+                    type="checkbox"
+                  />,
                   <button
                     className="text-left font-extrabold text-ink hover:text-primary"
                     key={`edit-${program.id}`}
@@ -1078,7 +1157,11 @@ export function AdminCasesPage() {
   const [caseForm, setCaseForm] = useState<CaseDraftForm>(emptyCaseDraftForm);
   const [savingCase, setSavingCase] = useState(false);
   const [caseMessage, setCaseMessage] = useState("");
+  const [selectedCaseIds, setSelectedCaseIds] = useState<string[]>([]);
   const selectedCase = cases.find((studentCase) => studentCase.id === selectedCaseId);
+  const selectableCaseIds = cases
+    .filter((studentCase) => studentCase.status !== "archived")
+    .map((studentCase) => studentCase.id);
 
   const startCreateCase = () => {
     setMode("create");
@@ -1161,6 +1244,39 @@ export function AdminCasesPage() {
     }
   };
 
+  const bulkArchiveCases = async () => {
+    const ids = selectedCaseIds.filter((id) => selectableCaseIds.includes(id));
+    if (!ids.length) {
+      setCaseMessage("请先选择要归档的案例");
+      return;
+    }
+    if (!window.confirm(`确认批量归档 ${ids.length} 个案例？`)) {
+      return;
+    }
+
+    setSavingCase(true);
+    setCaseMessage("");
+    try {
+      await Promise.all(
+        ids.map((caseId) =>
+          apiFetch<StudentCase>(`/api/admin/cases/${caseId}`, {
+            method: "DELETE"
+          })
+        )
+      );
+      setSelectedCaseIds([]);
+      setCaseMessage(`已归档 ${ids.length} 个案例。`);
+      await reload();
+      if (selectedCase && ids.includes(selectedCase.id)) {
+        startCreateCase();
+      }
+    } catch (bulkError) {
+      setCaseMessage(bulkError instanceof Error ? bulkError.message : "批量归档失败");
+    } finally {
+      setSavingCase(false);
+    }
+  };
+
   return (
     <div>
       <PageHeading
@@ -1182,23 +1298,56 @@ export function AdminCasesPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-extrabold tracking-normal text-ink">案例列表</h2>
-              <p className="mt-1 text-sm font-bold text-secondary">共 {cases.length} 条案例</p>
+              <p className="mt-1 text-sm font-bold text-secondary">
+                共 {cases.length} 条案例 / 已选 {selectedCaseIds.length}
+              </p>
             </div>
-            <button
-              className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
-              onClick={() => void reload()}
-              type="button"
-            >
-              刷新
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+                onClick={() =>
+                  setSelectedCaseIds(selectedCaseIds.length === selectableCaseIds.length ? [] : selectableCaseIds)
+                }
+                type="button"
+              >
+                {selectedCaseIds.length === selectableCaseIds.length ? "取消全选" : "全选"}
+              </button>
+              <button
+                className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={savingCase || selectedCaseIds.length === 0}
+                onClick={() => void bulkArchiveCases()}
+                type="button"
+              >
+                批量归档
+              </button>
+              <button
+                className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+                onClick={() => void reload()}
+                type="button"
+              >
+                刷新
+              </button>
+            </div>
           </div>
           {loading ? <p className="mt-4 text-sm font-bold text-secondary">加载案例列表中...</p> : null}
           {error ? <p className="mt-4 text-sm font-bold text-danger">{error}</p> : null}
           {!loading && !error ? (
             <div className="mt-4">
               <DataTable
-                headers={["案例 ID", "背景", "申请方向", "活动数", "状态", "操作"]}
+                headers={["选择", "案例 ID", "背景", "申请方向", "活动数", "状态", "操作"]}
                 rows={cases.map((studentCase) => [
+                  <input
+                    checked={selectedCaseIds.includes(studentCase.id)}
+                    className="h-4 w-4 accent-primary"
+                    disabled={studentCase.status === "archived"}
+                    key={`select-${studentCase.id}`}
+                    onChange={(event) =>
+                      setSelectedCaseIds((current) =>
+                        updateSelection(current, studentCase.id, event.target.checked)
+                      )
+                    }
+                    type="checkbox"
+                  />,
                   <button
                     className="text-left font-extrabold text-ink hover:text-primary"
                     key={`edit-${studentCase.id}`}
@@ -1283,7 +1432,9 @@ export function AdminTagsPage() {
   const [tagForm, setTagForm] = useState<TagDraftForm>(emptyTagDraftForm);
   const [savingTag, setSavingTag] = useState(false);
   const [tagMessage, setTagMessage] = useState("");
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const selectedTag = tags.find((tag) => tag.id === selectedTagId);
+  const selectableTagIds = tags.filter((tag) => tag.enabled).map((tag) => tag.id);
 
   const startCreateTag = () => {
     setMode("create");
@@ -1398,6 +1549,39 @@ export function AdminTagsPage() {
     }
   };
 
+  const bulkDisableTags = async () => {
+    const ids = selectedTagIds.filter((id) => selectableTagIds.includes(id));
+    if (!ids.length) {
+      setTagMessage("请先选择要停用的标签");
+      return;
+    }
+    if (!window.confirm(`确认批量停用 ${ids.length} 个标签？`)) {
+      return;
+    }
+
+    setSavingTag(true);
+    setTagMessage("");
+    try {
+      await Promise.all(
+        ids.map((tagId) =>
+          apiFetch<TagView>(`/api/admin/tags/${tagId}`, {
+            method: "DELETE"
+          })
+        )
+      );
+      setSelectedTagIds([]);
+      setTagMessage(`已停用 ${ids.length} 个标签。`);
+      await reload();
+      if (selectedTag && ids.includes(selectedTag.id)) {
+        startCreateTag();
+      }
+    } catch (bulkError) {
+      setTagMessage(bulkError instanceof Error ? bulkError.message : "批量停用失败");
+    } finally {
+      setSavingTag(false);
+    }
+  };
+
   return (
     <div>
       <PageHeading
@@ -1419,43 +1603,79 @@ export function AdminTagsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-extrabold tracking-normal text-ink">标签列表</h2>
-              <p className="mt-1 text-sm font-bold text-secondary">共 {tags.length} 个标签</p>
+              <p className="mt-1 text-sm font-bold text-secondary">
+                共 {tags.length} 个标签 / 已选 {selectedTagIds.length}
+              </p>
             </div>
-            <button
-              className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
-              onClick={() => void reload()}
-              type="button"
-            >
-              刷新
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+                onClick={() =>
+                  setSelectedTagIds(selectedTagIds.length === selectableTagIds.length ? [] : selectableTagIds)
+                }
+                type="button"
+              >
+                {selectedTagIds.length === selectableTagIds.length ? "取消全选" : "全选"}
+              </button>
+              <button
+                className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={savingTag || selectedTagIds.length === 0}
+                onClick={() => void bulkDisableTags()}
+                type="button"
+              >
+                批量停用
+              </button>
+              <button
+                className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+                onClick={() => void reload()}
+                type="button"
+              >
+                刷新
+              </button>
+            </div>
           </div>
           {loading ? <p className="mt-4 text-sm font-bold text-secondary">加载标签中...</p> : null}
           {error ? <p className="mt-4 text-sm font-bold text-danger">{error}</p> : null}
           {!loading && !error ? (
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {tags.map((tag) => (
-                <button
+                <div
                   className={`rounded-sm border p-4 text-left transition ${
                     tag.id === selectedTagId
                       ? "border-primary bg-primary/10"
                       : "border-border bg-soft hover:border-primary"
                   }`}
                   key={tag.id}
-                  onClick={() => startEditTag(tag)}
-                  type="button"
                 >
-                  <span className="flex items-center justify-between gap-3">
-                    <span className="min-w-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <label className="pt-1">
+                      <input
+                        checked={selectedTagIds.includes(tag.id)}
+                        className="h-4 w-4 accent-primary"
+                        disabled={!tag.enabled}
+                        onChange={(event) =>
+                          setSelectedTagIds((current) =>
+                            updateSelection(current, tag.id, event.target.checked)
+                          )
+                        }
+                        type="checkbox"
+                      />
+                    </label>
+                    <button
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => startEditTag(tag)}
+                      type="button"
+                    >
                       <span className="block truncate font-extrabold text-ink">{tag.name}</span>
                       <span className="mt-1 block text-sm font-bold text-secondary">
                         {tagGroupLabel(tag.group)}
                       </span>
-                    </span>
+                    </button>
                     <Badge tone={tag.enabled ? "green" : "amber"}>
                       {tag.enabled ? "enabled" : "disabled"}
                     </Badge>
-                  </span>
-                </button>
+                  </div>
+                </div>
               ))}
             </div>
           ) : null}

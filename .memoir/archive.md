@@ -54,6 +54,7 @@ npm run start
 
 **已知运维要点**：
 - 项目使用 `postcss.config.mjs` 和 `tailwind.config.ts`，CSS 构建由 Tailwind 自动处理
+- Prisma 7 使用 `prisma.config.ts` 中的 `migrations.seed` 执行 `npm run db:seed`，不要再依赖 `package.json` 的旧 `prisma.seed` 字段
 - 项目根目录提供 `docker-compose.yml` 用于本地启动 PostgreSQL；当前 Codex 环境没有 docker 命令，数据库烟测需在用户本机执行
 
 ## 待办与已知问题

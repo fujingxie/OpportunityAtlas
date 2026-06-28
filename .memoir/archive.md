@@ -55,6 +55,7 @@ npm run start
 - 当前为前后端同仓库 Next.js 应用，运行时需要 PostgreSQL
 - 生产环境需配置 `DATABASE_URL`、`SESSION_SECRET`、`ADMIN_EMAIL`、`ADMIN_PASSWORD`、`UPLOAD_DIR`
 - 构建产物在 `.next/` 目录，使用 `next build` 后通过 Next.js runtime 运行
+- 生产部署提供 `Dockerfile`、`docker-compose.prod.yml`、`.env.production.example` 和 `docs/deploy.md`；目标服务器 80/443/3000 已占用，默认先将应用暴露到 `3100`，访问 `http://38.76.166.42:3100`
 
 **已知运维要点**：
 - 项目使用 `postcss.config.mjs` 和 `tailwind.config.ts`，CSS 构建由 Tailwind 自动处理

@@ -2,7 +2,7 @@ import { fail, ok } from "@/lib/server/api-response";
 import { requireAdmin } from "@/lib/server/auth";
 import { getPrisma } from "@/lib/server/db";
 import { parseProgramsFromText, saveUploadedDocx, type ImportSourceType } from "@/lib/server/import-docx";
-import { serializeImportJob } from "@/lib/server/imports";
+import { serializeImportJob, serializeImportJobsWithQuality, serializeImportJobWithQuality } from "@/lib/server/imports";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +35,7 @@ export async function GET() {
     }
   });
 
-  return ok(jobs.map(serializeImportJob));
+  return ok(await serializeImportJobsWithQuality(jobs));
 }
 
 export async function POST(request: Request) {
@@ -121,5 +121,5 @@ export async function POST(request: Request) {
     }
   });
 
-  return ok(serializeImportJob(job), undefined, { status: 201 });
+  return ok(await serializeImportJobWithQuality(job), undefined, { status: 201 });
 }

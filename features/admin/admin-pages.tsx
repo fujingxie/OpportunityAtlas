@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { Badge, Card, PageHeading, TextLink } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
-import type { ImportJob, Program, ProgramCaseRelation, StudentCase } from "@/lib/types";
+import type {
+  ImportJob,
+  ImportQualitySummary,
+  Program,
+  ProgramCaseRelation,
+  StudentCase
+} from "@/lib/types";
 
 type ImportItemView = {
   id: string;
@@ -12,6 +18,7 @@ type ImportItemView = {
   itemType: string;
   status: string;
   parsedData: unknown;
+  quality?: ImportQualitySummary;
 };
 
 type ImportJobView = ImportJob & {
@@ -402,6 +409,48 @@ function statusTone(status: string): "default" | "blue" | "green" | "amber" | "r
   return "amber";
 }
 
+function qualityTone(level: ImportQualitySummary["level"]): "default" | "blue" | "green" | "amber" | "red" {
+  if (level === "error") {
+    return "red";
+  }
+  if (level === "warning") {
+    return "amber";
+  }
+  return "green";
+}
+
+function qualityLabel(quality?: ImportQualitySummary) {
+  if (!quality) {
+    return "未检查";
+  }
+  if (quality.level === "error") {
+    return "需修复";
+  }
+  if (quality.level === "warning") {
+    return "建议完善";
+  }
+  return "可发布";
+}
+
+function qualityStats(items: ImportItemView[] = []) {
+  return items
+    .filter((item) => item.status === "draft")
+    .reduce(
+      (stats, item) => {
+        const issues = item.quality?.issues ?? [];
+        return {
+          errors: stats.errors + issues.filter((issue) => issue.severity === "error").length,
+          warnings: stats.warnings + issues.filter((issue) => issue.severity === "warning").length
+        };
+      },
+      { errors: 0, warnings: 0 }
+    );
+}
+
+function hasQualityErrors(job: ImportJobView) {
+  return qualityStats(job.items).errors > 0;
+}
+
 function updateSelection(current: string[], id: string, checked: boolean) {
   if (checked) {
     return current.includes(id) ? current : [...current, id];
@@ -515,6 +564,11 @@ export function AdminImportPage() {
 
   const publishJob = async (jobId: string) => {
     setActionMessage("");
+    const job = jobs.find((item) => item.id === jobId);
+    if (job && hasQualityErrors(job)) {
+      setActionMessage("存在质量检查错误，请修复后再发布。");
+      return;
+    }
     try {
       await apiFetch<ImportJobView>(`/api/admin/import/jobs/${jobId}/publish`, {
         method: "POST"
@@ -655,7 +709,9 @@ export function AdminImportPage() {
             <div className="mt-4 space-y-3">
               {loading ? <p className="text-sm font-bold text-secondary">加载上传队列中...</p> : null}
               {error ? <p className="text-sm font-bold text-danger">{error}</p> : null}
-              {jobs.map((job) => (
+              {jobs.map((job) => {
+                const stats = qualityStats(job.items);
+                return (
                 <div
                   className="rounded-sm border border-border bg-soft p-4"
                   key={job.id}
@@ -678,6 +734,11 @@ export function AdminImportPage() {
                   {job.errorMessage ? (
                     <p className="mt-3 text-sm leading-7 text-danger">{job.errorMessage}</p>
                   ) : null}
+                  {job.sourceType === "program" && (job.items?.length ?? 0) > 0 ? (
+                    <p className="mt-3 text-sm font-bold text-secondary">
+                      质量检查：错误 {stats.errors} / 提醒 {stats.warnings}
+                    </p>
+                  ) : null}
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-ink hover:border-primary disabled:cursor-not-allowed disabled:opacity-50"
@@ -689,7 +750,12 @@ export function AdminImportPage() {
                     </button>
                     <button
                       className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={job.status === "failed" || job.status === "published" || job.sourceType !== "program"}
+                      disabled={
+                        job.status === "failed" ||
+                        job.status === "published" ||
+                        job.sourceType !== "program" ||
+                        stats.errors > 0
+                      }
                       onClick={() => void publishJob(job.id)}
                       type="button"
                     >
@@ -697,7 +763,8 @@ export function AdminImportPage() {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </Card>
@@ -737,8 +804,18 @@ export function AdminImportPage() {
                           <span className="mt-1 block text-xs font-bold text-secondary">
                             {item.itemType}
                           </span>
+                          {item.quality ? (
+                            <span className="mt-2 block text-xs font-bold text-secondary">
+                              质量 {item.quality.score} / {qualityLabel(item.quality)}
+                            </span>
+                          ) : null}
                         </span>
-                        <Badge tone={statusTone(item.status)}>{item.status}</Badge>
+                        <span className="flex shrink-0 flex-col items-end gap-2">
+                          <Badge tone={statusTone(item.status)}>{item.status}</Badge>
+                          {item.quality ? (
+                            <Badge tone={qualityTone(item.quality.level)}>{qualityLabel(item.quality)}</Badge>
+                          ) : null}
+                        </span>
                       </span>
                     </button>
                   ))}
@@ -753,8 +830,14 @@ export function AdminImportPage() {
               <div className="mt-4 space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone={statusTone(selectedItem.status)}>{selectedItem.status}</Badge>
+                  {selectedItem.quality ? (
+                    <Badge tone={qualityTone(selectedItem.quality.level)}>
+                      {qualityLabel(selectedItem.quality)} / {selectedItem.quality.score}
+                    </Badge>
+                  ) : null}
                   <span className="text-sm font-bold text-secondary">{selectedItem.title}</span>
                 </div>
+                <ImportQualityPanel quality={selectedItem.quality} />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <DraftTextField
                     label="活动名称"
@@ -2080,6 +2163,51 @@ function AdminStat({ label, value }: { label: string; value: string }) {
     <div className="flex justify-between gap-4 border-b border-border pb-3 last:border-b-0 last:pb-0">
       <dt className="text-sm font-bold text-secondary">{label}</dt>
       <dd className="text-sm font-extrabold text-ink">{value}</dd>
+    </div>
+  );
+}
+
+function ImportQualityPanel({ quality }: { quality?: ImportQualitySummary }) {
+  if (!quality) {
+    return null;
+  }
+
+  const errors = quality.issues.filter((issue) => issue.severity === "error");
+  const warnings = quality.issues.filter((issue) => issue.severity === "warning");
+
+  return (
+    <div className="rounded-sm border border-border bg-soft p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-extrabold text-ink">质量检查</h3>
+          <p className="mt-1 text-xs font-bold text-secondary">
+            错误 {errors.length} / 提醒 {warnings.length} / 分数 {quality.score}
+          </p>
+        </div>
+        <Badge tone={qualityTone(quality.level)}>{qualityLabel(quality)}</Badge>
+      </div>
+      {quality.issues.length ? (
+        <div className="mt-3 space-y-2">
+          {quality.issues.map((issue, index) => (
+            <div
+              className="rounded-sm border border-border bg-surface px-3 py-2"
+              key={`${issue.field}-${issue.severity}-${index}`}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone={issue.severity === "error" ? "red" : "amber"}>
+                  {issue.severity === "error" ? "错误" : "提醒"}
+                </Badge>
+                <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted">
+                  {issue.field}
+                </span>
+              </div>
+              <p className="mt-2 text-sm font-bold leading-6 text-secondary">{issue.message}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm font-bold text-success">当前预览项质量检查通过。</p>
+      )}
     </div>
   );
 }

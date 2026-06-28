@@ -93,6 +93,20 @@ export type ProgramCaseRelation = {
   createdAt: string;
 };
 
+export type ImportQualitySeverity = "error" | "warning";
+
+export type ImportQualityIssue = {
+  field: string;
+  severity: ImportQualitySeverity;
+  message: string;
+};
+
+export type ImportQualitySummary = {
+  level: "ok" | ImportQualitySeverity;
+  score: number;
+  issues: ImportQualityIssue[];
+};
+
 export type Tag = {
   id: string;
   name: string;

@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { fail, ok } from "@/lib/server/api-response";
 import { requireAdmin } from "@/lib/server/auth";
 import { getPrisma } from "@/lib/server/db";
-import { serializeImportItem } from "@/lib/server/imports";
+import { serializeImportJobWithQuality } from "@/lib/server/imports";
 import { readJson } from "@/lib/server/validation";
 
 export const runtime = "nodejs";
@@ -39,7 +39,7 @@ export async function PATCH(
     return fail("NOT_FOUND", "导入预览项不存在", 404);
   }
 
-  const updated = await getPrisma().importItem.update({
+  await getPrisma().importItem.update({
     where: {
       id: params.itemId
     },
@@ -50,5 +50,23 @@ export async function PATCH(
     }
   });
 
-  return ok(serializeImportItem(updated));
+  const updatedJob = await getPrisma().importJob.findUnique({
+    where: {
+      id: params.jobId
+    },
+    include: {
+      items: true
+    }
+  });
+  if (!updatedJob) {
+    return fail("NOT_FOUND", "导入任务不存在", 404);
+  }
+
+  const serializedJob = await serializeImportJobWithQuality(updatedJob);
+  const updatedItem = serializedJob.items?.find((jobItem) => jobItem.id === params.itemId);
+  if (!updatedItem) {
+    return fail("NOT_FOUND", "导入预览项不存在", 404);
+  }
+
+  return ok(updatedItem);
 }

@@ -267,15 +267,30 @@ DELETE /api/admin/relations/:relationId
 
 `GET /api/admin/import/jobs/:jobId`
 
-返回解析任务详情和结构化预览项。预览项允许前端人工校对后 patch。
+返回解析任务详情和结构化预览项。预览项允许前端人工校对后 patch。每个活动预览项返回 `quality`：
+
+```ts
+type ImportQualitySummary = {
+  level: 'ok' | 'warning' | 'error';
+  score: number;
+  issues: Array<{
+    field: string;
+    severity: 'warning' | 'error';
+    message: string;
+  }>;
+};
+```
+
+质量检查覆盖：活动名称、官网格式、同一导入任务内重复名称、活动库已有同名活动、主办方、简介、年级、学科、地点、费用、时间、报名方式、申请条件、申请材料、亮点和核心主题。
 
 `PATCH /api/admin/import/jobs/:jobId/items/:itemId`
 
-用于修改单条解析预览字段。后端需要保存人工校对后的版本，也支持将 `status` 改为 `rejected` 以跳过发布。
+用于修改单条解析预览字段。后端需要保存人工校对后的版本，也支持将 `status` 改为 `rejected` 以跳过发布。PATCH 返回更新后的预览项和最新 `quality`。
 
 `POST /api/admin/import/jobs/:jobId/publish`
 
 发布活动导入任务。当前仅支持 `sourceType=program`；后端只发布 `status=draft` 的活动预览项，已发布或已跳过的预览项不会重复入库。
+若任一待发布项存在 `severity=error` 的质量问题，返回 `QUALITY_CHECK_FAILED`，管理员修复或跳过问题项后再发布。`warning` 不阻止发布。
 
 ### 3.2 活动管理
 
@@ -406,6 +421,19 @@ type ImportJob = {
   progress: number;
   createdAt: string;
   errorMessage?: string;
+};
+
+type ImportItem = {
+  id: string;
+  jobId: string;
+  itemType: 'program' | 'case';
+  title: string;
+  rawText?: string;
+  parsedData: unknown;
+  status: 'draft' | 'pending_review' | 'published' | 'rejected';
+  quality?: ImportQualitySummary;
+  createdAt: string;
+  updatedAt: string;
 };
 ```
 

@@ -246,6 +246,7 @@ POST   /api/admin/tags
 PATCH  /api/admin/tags/:tagId
 DELETE /api/admin/tags/:tagId
 
+GET    /api/admin/relations
 POST   /api/admin/relations
 DELETE /api/admin/relations/:relationId
 ```
@@ -303,6 +304,20 @@ type TagGroup = 'program_type' | 'subject' | 'grade' | 'major' | 'location' | 'f
 ```
 
 不包含智能匹配规则或权重配置。
+
+### 3.6 关联管理
+
+`GET /api/admin/relations` 查询参数：
+
+```txt
+q
+programId
+caseId
+page
+pageSize
+```
+
+返回活动与案例的显式关联列表。管理端返回展示字段 `programName`、`anonymousCode`，用于后台维护；公共详情页仍通过 `/api/programs/:programId/cases` 和 `/api/cases/:caseId/programs` 展示关联结果。
 
 ## 4. Core Types
 
@@ -374,6 +389,11 @@ type ProgramCaseRelation = {
   relationType: 'participated' | 'similar_subject' | 'similar_path' | 'manual_related';
   reasons?: string[];
   createdAt: string;
+};
+
+type ProgramCaseRelationAdminView = ProgramCaseRelation & {
+  programName: string;
+  anonymousCode: string;
 };
 
 type ImportJob = {

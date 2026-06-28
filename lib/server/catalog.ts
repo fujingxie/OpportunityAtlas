@@ -303,7 +303,32 @@ export async function getRelatedProgramsForCase(caseId: string) {
     }
   });
 
-  return activities
+  const activityPrograms = activities
     .map((activity) => (activity.program ? serializeProgram(activity.program) : null))
     .filter((program): program is Program => Boolean(program));
+
+  const relationPrograms = await getPrisma().programCaseRelation.findMany({
+    where: {
+      caseId,
+      program: {
+        status: "published"
+      }
+    },
+    include: {
+      program: true
+    }
+  });
+  const programs = [
+    ...activityPrograms,
+    ...relationPrograms.map((relation) => serializeProgram(relation.program))
+  ];
+  const seen = new Set<string>();
+
+  return programs.filter((program) => {
+    if (seen.has(program.id)) {
+      return false;
+    }
+    seen.add(program.id);
+    return true;
+  });
 }

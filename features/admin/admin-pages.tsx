@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { Badge, Card, PageHeading, TextLink } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
-import type { ImportJob, Program, StudentCase } from "@/lib/types";
+import type { ImportJob, Program, ProgramCaseRelation, StudentCase } from "@/lib/types";
 
 type ImportItemView = {
   id: string;
@@ -71,6 +71,11 @@ type TagView = {
   name: string;
   group: string;
   enabled: boolean;
+};
+
+type RelationView = ProgramCaseRelation & {
+  programName: string;
+  anonymousCode: string;
 };
 
 type TagDraftForm = {
@@ -176,8 +181,22 @@ const tagGroupOptions: Array<{ label: string; value: TagView["group"] }> = [
   { label: "形式", value: "format" }
 ];
 
+const relationTypeOptions: Array<{
+  label: string;
+  value: ProgramCaseRelation["relationType"];
+}> = [
+  { label: "参与活动", value: "participated" },
+  { label: "相似学科", value: "similar_subject" },
+  { label: "相似路径", value: "similar_path" },
+  { label: "人工关联", value: "manual_related" }
+];
+
 function tagGroupLabel(group: string) {
   return tagGroupOptions.find((option) => option.value === group)?.label ?? group;
+}
+
+function relationTypeLabel(type: string) {
+  return relationTypeOptions.find((option) => option.value === type)?.label ?? type;
 }
 
 function asRecord(value: unknown) {
@@ -1418,6 +1437,303 @@ export function AdminCasesPage() {
                 </button>
               ) : null}
             </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export function AdminRelationsPage() {
+  const {
+    items: relations,
+    loading: relationsLoading,
+    error: relationsError,
+    reload: reloadRelations
+  } = useApiList<RelationView>("/api/admin/relations?pageSize=100");
+  const {
+    items: programs,
+    loading: programsLoading,
+    error: programsError,
+    reload: reloadPrograms
+  } = useApiList<Program>("/api/admin/programs?pageSize=100");
+  const {
+    items: cases,
+    loading: casesLoading,
+    error: casesError,
+    reload: reloadCases
+  } = useApiList<StudentCase>("/api/admin/cases?pageSize=100");
+  const [selectedProgramId, setSelectedProgramId] = useState("");
+  const [selectedCaseId, setSelectedCaseId] = useState("");
+  const [relationType, setRelationType] =
+    useState<ProgramCaseRelation["relationType"]>("participated");
+  const [reasonsText, setReasonsText] = useState("");
+  const [relationSearch, setRelationSearch] = useState("");
+  const [savingRelation, setSavingRelation] = useState(false);
+  const [relationMessage, setRelationMessage] = useState("");
+
+  const activePrograms = useMemo(
+    () => programs.filter((program) => program.status !== "archived"),
+    [programs]
+  );
+  const activeCases = useMemo(
+    () => cases.filter((studentCase) => studentCase.status !== "archived"),
+    [cases]
+  );
+  const selectedProgram = programs.find((program) => program.id === selectedProgramId);
+  const selectedCase = cases.find((studentCase) => studentCase.id === selectedCaseId);
+  const existingRelation = relations.find(
+    (relation) =>
+      relation.programId === selectedProgramId &&
+      relation.caseId === selectedCaseId &&
+      relation.relationType === relationType
+  );
+  const selectedProgramRelations = relations.filter(
+    (relation) => relation.programId === selectedProgramId
+  );
+  const selectedCaseRelations = relations.filter((relation) => relation.caseId === selectedCaseId);
+  const filteredRelations = useMemo(() => {
+    const q = relationSearch.trim().toLowerCase();
+    if (!q) {
+      return relations;
+    }
+    return relations.filter((relation) =>
+      [
+        relation.programName,
+        relation.anonymousCode,
+        relationTypeLabel(relation.relationType),
+        relation.relationType,
+        ...(relation.reasons ?? [])
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [relationSearch, relations]);
+
+  useEffect(() => {
+    if (!selectedProgramId && activePrograms[0]) {
+      setSelectedProgramId(activePrograms[0].id);
+    }
+  }, [activePrograms, selectedProgramId]);
+
+  useEffect(() => {
+    if (!selectedCaseId && activeCases[0]) {
+      setSelectedCaseId(activeCases[0].id);
+    }
+  }, [activeCases, selectedCaseId]);
+
+  const reloadAllRelationData = async () => {
+    await Promise.all([reloadRelations(), reloadPrograms(), reloadCases()]);
+  };
+
+  const createRelation = async () => {
+    if (!selectedProgramId) {
+      setRelationMessage("请先选择活动");
+      return;
+    }
+    if (!selectedCaseId) {
+      setRelationMessage("请先选择案例");
+      return;
+    }
+    if (existingRelation) {
+      setRelationMessage("该活动与案例已存在相同类型的关联");
+      return;
+    }
+
+    setSavingRelation(true);
+    setRelationMessage("");
+    try {
+      await apiFetch<ProgramCaseRelation>("/api/admin/relations", {
+        method: "POST",
+        body: JSON.stringify({
+          programId: selectedProgramId,
+          caseId: selectedCaseId,
+          relationType,
+          reasons: textToArray(reasonsText)
+        })
+      });
+      setReasonsText("");
+      setRelationMessage("关联已创建。");
+      await reloadRelations();
+    } catch (createError) {
+      setRelationMessage(createError instanceof Error ? createError.message : "创建关联失败");
+    } finally {
+      setSavingRelation(false);
+    }
+  };
+
+  const deleteRelation = async (relation: RelationView) => {
+    if (!window.confirm(`确认移除「${relation.programName}」与「${relation.anonymousCode}」的关联？`)) {
+      return;
+    }
+
+    setSavingRelation(true);
+    setRelationMessage("");
+    try {
+      await apiFetch<{ success: boolean }>(`/api/admin/relations/${relation.id}`, {
+        method: "DELETE"
+      });
+      setRelationMessage("关联已移除。");
+      await reloadRelations();
+    } catch (deleteError) {
+      setRelationMessage(deleteError instanceof Error ? deleteError.message : "移除关联失败");
+    } finally {
+      setSavingRelation(false);
+    }
+  };
+
+  return (
+    <div>
+      <PageHeading
+        description="维护活动与匿名案例之间的显式关联，前台详情页会展示这些相关路径。"
+        eyebrow="Admin"
+        actions={
+          <button
+            className="rounded-sm border border-border bg-surface px-4 py-2 text-sm font-black text-primary hover:border-primary"
+            onClick={() => void reloadAllRelationData()}
+            type="button"
+          >
+            刷新数据
+          </button>
+        }
+        title="关联管理"
+      />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_430px]">
+        <Card>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-extrabold tracking-normal text-ink">已建立关联</h2>
+              <p className="mt-1 text-sm font-bold text-secondary">
+                共 {relations.length} 条关联 / 当前显示 {filteredRelations.length}
+              </p>
+            </div>
+            <input
+              className="min-h-10 w-full rounded-sm border border-border bg-surface px-3 text-sm font-bold text-ink outline-none focus:border-primary sm:w-[260px]"
+              onChange={(event) => setRelationSearch(event.target.value)}
+              placeholder="搜索活动、案例或理由"
+              value={relationSearch}
+            />
+          </div>
+          {relationsLoading ? (
+            <p className="mt-4 text-sm font-bold text-secondary">加载关联数据中...</p>
+          ) : null}
+          {relationsError ? (
+            <p className="mt-4 text-sm font-bold text-danger">{relationsError}</p>
+          ) : null}
+          {!relationsLoading && !relationsError ? (
+            <div className="mt-4">
+              <DataTable
+                headers={["活动", "案例", "关系", "理由", "操作"]}
+                rows={filteredRelations.map((relation) => [
+                  <div className="space-y-1" key={`program-${relation.id}`}>
+                    <button
+                      className="text-left font-extrabold text-ink hover:text-primary"
+                      onClick={() => setSelectedProgramId(relation.programId)}
+                      type="button"
+                    >
+                      {relation.programName}
+                    </button>
+                    <TextLink href={`/programs/${relation.programId}`}>查看活动</TextLink>
+                  </div>,
+                  <div className="space-y-1" key={`case-${relation.id}`}>
+                    <button
+                      className="text-left font-extrabold text-ink hover:text-primary"
+                      onClick={() => setSelectedCaseId(relation.caseId)}
+                      type="button"
+                    >
+                      {relation.anonymousCode}
+                    </button>
+                    <TextLink href={`/cases/${relation.caseId}`}>查看案例</TextLink>
+                  </div>,
+                  relationTypeLabel(relation.relationType),
+                  relation.reasons?.length ? relation.reasons.join("、") : "未填写",
+                  <button
+                    className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={savingRelation}
+                    key={`delete-${relation.id}`}
+                    onClick={() => void deleteRelation(relation)}
+                    type="button"
+                  >
+                    移除
+                  </button>
+                ])}
+              />
+            </div>
+          ) : null}
+        </Card>
+
+        <Card>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-extrabold tracking-normal text-ink">新增关联</h2>
+              <p className="mt-1 text-sm font-bold text-secondary">
+                选择一条活动和一条案例，建立运营维护关系。
+              </p>
+            </div>
+            {existingRelation ? <Badge tone="amber">已存在</Badge> : <Badge tone="blue">新关联</Badge>}
+          </div>
+
+          <div className="mt-5 space-y-4">
+            {programsLoading || casesLoading ? (
+              <p className="text-sm font-bold text-secondary">加载活动和案例中...</p>
+            ) : null}
+            {programsError || casesError ? (
+              <p className="text-sm font-bold text-danger">{programsError || casesError}</p>
+            ) : null}
+            <DraftSelectField
+              label="选择活动"
+              onChange={(value) => setSelectedProgramId(value)}
+              options={activePrograms.map((program) => ({
+                label: program.name,
+                value: program.id
+              }))}
+              value={selectedProgramId}
+            />
+            <DraftSelectField
+              label="选择案例"
+              onChange={(value) => setSelectedCaseId(value)}
+              options={activeCases.map((studentCase) => ({
+                label: `${studentCase.anonymousCode} / ${studentCase.grade} / ${studentCase.intendedMajor}`,
+                value: studentCase.id
+              }))}
+              value={selectedCaseId}
+            />
+            <DraftSelectField
+              label="关联类型"
+              onChange={(value) => setRelationType(value)}
+              options={relationTypeOptions}
+              value={relationType}
+            />
+            <DraftTextField
+              label="关联理由"
+              onChange={setReasonsText}
+              textarea
+              value={reasonsText}
+            />
+
+            <div className="rounded-sm border border-border bg-soft p-4">
+              <h3 className="text-sm font-extrabold text-ink">当前选择</h3>
+              <dl className="mt-3 space-y-3">
+                <AdminStat label="活动" value={selectedProgram?.name ?? "未选择"} />
+                <AdminStat label="案例" value={selectedCase?.anonymousCode ?? "未选择"} />
+                <AdminStat label="类型" value={relationTypeLabel(relationType)} />
+                <AdminStat label="该活动已有案例" value={`${selectedProgramRelations.length}`} />
+                <AdminStat label="该案例已有活动" value={`${selectedCaseRelations.length}`} />
+              </dl>
+            </div>
+
+            {relationMessage ? (
+              <p className="text-sm font-bold text-secondary">{relationMessage}</p>
+            ) : null}
+            <button
+              className="min-h-11 w-full rounded-sm bg-primary px-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={savingRelation || !selectedProgramId || !selectedCaseId || Boolean(existingRelation)}
+              onClick={() => void createRelation()}
+              type="button"
+            >
+              {savingRelation ? "保存中" : "创建关联"}
+            </button>
           </div>
         </Card>
       </div>

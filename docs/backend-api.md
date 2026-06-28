@@ -118,6 +118,7 @@ GET /api/programs/:programId/cases
 GET /api/cases
 GET /api/cases/:caseId
 GET /api/cases/:caseId/programs
+GET /api/tags
 GET /api/search
 ```
 
@@ -190,7 +191,26 @@ sortOrder
 
 返回案例参与过或人工关联的活动列表。
 
-### 2.7 GET /api/search
+### 2.7 GET /api/tags
+
+查询参数：
+
+```txt
+group
+```
+
+仅返回 `enabled=true` 的公开标签，用于活动库和案例库筛选项。`group` 可取：
+
+```txt
+program_type
+subject
+grade
+major
+location
+format
+```
+
+### 2.8 GET /api/search
 
 返回活动和案例混合搜索结果，但不做智能推荐。
 

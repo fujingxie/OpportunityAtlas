@@ -4,23 +4,50 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge, Card, EmptyState } from "@/components/ui";
 import { apiFetch, toQueryString } from "@/lib/api-client";
-import type { StudentCase } from "@/lib/types";
+import type { StudentCase, Tag } from "@/lib/types";
 import { normalizeText } from "@/lib/utils";
 
-const grades = ["all", "G9", "G10", "G11", "G12"];
+const fallbackGrades = ["G9", "G10", "G11", "G12"];
 const schoolTypes = ["all", "international", "public", "other"];
-const activityTypes = ["all", "Competition", "Summer School", "Research Program"];
+const fallbackActivityTypes = ["Competition", "Summer School", "Research Program"];
+const fallbackMajors = ["Engineering", "Data Science", "Econ", "Humanities"];
 const resultTiers = ["all", "Top 20", "Top 30", "Selective", "Matched", "Developing", "Portfolio"];
+
+function optionsFromTags(tags: Tag[], group: Tag["group"], fallback: string[]) {
+  const enabledNames = tags
+    .filter((tag) => tag.group === group && tag.enabled)
+    .map((tag) => tag.name);
+  const names = enabledNames.length ? enabledNames : fallback;
+  const orderedNames = [
+    ...fallback.filter((option) => names.includes(option)),
+    ...names.filter((option) => !fallback.includes(option))
+  ];
+  return ["all", ...Array.from(new Set(orderedNames))];
+}
 
 export function CaseDirectory() {
   const [q, setQ] = useState("");
   const [grade, setGrade] = useState("all");
   const [schoolType, setSchoolType] = useState("all");
   const [activityType, setActivityType] = useState("all");
+  const [intendedMajor, setIntendedMajor] = useState("all");
   const [resultTier, setResultTier] = useState("all");
   const [caseData, setCaseData] = useState<StudentCase[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tagsLoading, setTagsLoading] = useState(true);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    apiFetch<Tag[]>("/api/tags")
+      .then((response) => {
+        setTags(response.data);
+      })
+      .catch(() => {
+        setTags([]);
+      })
+      .finally(() => setTagsLoading(false));
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -30,6 +57,7 @@ export function CaseDirectory() {
         grade,
         schoolType,
         activityType,
+        intendedMajor,
         resultTier,
         pageSize: 100
       })}`
@@ -42,7 +70,16 @@ export function CaseDirectory() {
         setError(fetchError instanceof Error ? fetchError.message : "案例数据加载失败");
       })
       .finally(() => setLoading(false));
-  }, [activityType, grade, q, resultTier, schoolType]);
+  }, [activityType, grade, intendedMajor, q, resultTier, schoolType]);
+
+  const filterOptions = useMemo(
+    () => ({
+      grades: optionsFromTags(tags, "grade", fallbackGrades),
+      activityTypes: optionsFromTags(tags, "program_type", fallbackActivityTypes),
+      majors: optionsFromTags(tags, "major", fallbackMajors)
+    }),
+    [tags]
+  );
 
   const cases = useMemo(
     () =>
@@ -75,12 +112,18 @@ export function CaseDirectory() {
         ) {
           return false;
         }
+        if (
+          intendedMajor !== "all" &&
+          !normalizeText(studentCase.intendedMajor).includes(normalizeText(intendedMajor))
+        ) {
+          return false;
+        }
         if (resultTier !== "all" && studentCase.resultTier !== resultTier) {
           return false;
         }
         return true;
       }),
-    [activityType, caseData, grade, q, resultTier, schoolType]
+    [activityType, caseData, grade, intendedMajor, q, resultTier, schoolType]
   );
 
   return (
@@ -88,7 +131,7 @@ export function CaseDirectory() {
       <aside className="border-b border-border bg-surface p-7 lg:border-b-0 lg:border-r">
         <h2 className="text-base font-black tracking-normal text-ink">案例筛选</h2>
         <div className="mt-6 space-y-7">
-          <FilterGroup label="年级" onChange={setGrade} options={grades} value={grade} />
+          <FilterGroup label="年级" onChange={setGrade} options={filterOptions.grades} value={grade} />
           <FilterGroup
             label="学校类型"
             onChange={setSchoolType}
@@ -98,8 +141,14 @@ export function CaseDirectory() {
           <FilterGroup
             label="活动类型"
             onChange={setActivityType}
-            options={activityTypes}
+            options={filterOptions.activityTypes}
             value={activityType}
+          />
+          <FilterGroup
+            label="申请方向"
+            onChange={setIntendedMajor}
+            options={filterOptions.majors}
+            value={intendedMajor}
           />
           <FilterGroup
             label="结果层级"
@@ -108,6 +157,9 @@ export function CaseDirectory() {
             value={resultTier}
           />
         </div>
+        {tagsLoading ? (
+          <p className="mt-6 text-xs font-bold leading-6 text-muted">正在加载标签配置...</p>
+        ) : null}
       </aside>
 
       <section className="bg-soft p-6 lg:p-9">

@@ -69,8 +69,18 @@ export const mockTags = [
   { id: "tag-humanities", name: "人文社科", group: "subject", enabled: true },
   { id: "tag-business", name: "商科/经济", group: "subject", enabled: true },
   { id: "tag-art", name: "艺术", group: "subject", enabled: true },
+  { id: "tag-grade-g9", name: "G9", group: "grade", enabled: true },
+  { id: "tag-grade-g10", name: "G10", group: "grade", enabled: true },
+  { id: "tag-grade-g11", name: "G11", group: "grade", enabled: true },
+  { id: "tag-grade-g12", name: "G12", group: "grade", enabled: true },
+  { id: "tag-major-engineering", name: "Engineering", group: "major", enabled: true },
+  { id: "tag-major-data-science", name: "Data Science", group: "major", enabled: true },
+  { id: "tag-major-econ", name: "Econ", group: "major", enabled: true },
+  { id: "tag-major-humanities", name: "Humanities", group: "major", enabled: true },
+  { id: "tag-location-online", name: "线上", group: "location", enabled: true },
+  { id: "tag-location-us", name: "美国", group: "location", enabled: true },
+  { id: "tag-location-global", name: "全球", group: "location", enabled: true },
   { id: "tag-online", name: "online", group: "format", enabled: true },
   { id: "tag-offline", name: "offline", group: "format", enabled: true },
   { id: "tag-hybrid", name: "hybrid", group: "format", enabled: true }
 ];
-

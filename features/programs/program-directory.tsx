@@ -4,14 +4,27 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge, Card, EmptyState } from "@/components/ui";
 import { apiFetch, toQueryString } from "@/lib/api-client";
-import type { Program } from "@/lib/types";
+import type { Program, Tag } from "@/lib/types";
 import { includesAny, normalizeText } from "@/lib/utils";
 
-const programTypes = ["all", "Competition", "Summer School", "Research Program", "Other"];
-const subjects = ["all", "STEM", "商科/经济", "人文社科", "艺术", "综合"];
-const grades = ["all", "G9", "G10", "G11", "G12"];
-const formats = ["all", "online", "offline", "hybrid"];
+const fallbackProgramTypes = ["Competition", "Summer School", "Research Program", "Other"];
+const fallbackSubjects = ["STEM", "商科/经济", "人文社科", "艺术", "综合"];
+const fallbackGrades = ["G9", "G10", "G11", "G12"];
+const fallbackFormats = ["online", "offline", "hybrid"];
+const fallbackLocations = ["线上", "美国", "全球"];
 const costs = ["all", "free", "paid"];
+
+function optionsFromTags(tags: Tag[], group: Tag["group"], fallback: string[]) {
+  const enabledNames = tags
+    .filter((tag) => tag.group === group && tag.enabled)
+    .map((tag) => tag.name);
+  const names = enabledNames.length ? enabledNames : fallback;
+  const orderedNames = [
+    ...fallback.filter((option) => names.includes(option)),
+    ...names.filter((option) => !fallback.includes(option))
+  ];
+  return ["all", ...Array.from(new Set(orderedNames))];
+}
 
 export function ProgramDirectory({
   initialQ = "",
@@ -25,10 +38,24 @@ export function ProgramDirectory({
   const [subject, setSubject] = useState("all");
   const [grade, setGrade] = useState("all");
   const [format, setFormat] = useState("all");
+  const [location, setLocation] = useState("all");
   const [costType, setCostType] = useState("all");
   const [programData, setProgramData] = useState<Program[]>(initialPrograms ?? []);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(!initialPrograms?.length);
+  const [tagsLoading, setTagsLoading] = useState(true);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    apiFetch<Tag[]>("/api/tags")
+      .then((response) => {
+        setTags(response.data);
+      })
+      .catch(() => {
+        setTags([]);
+      })
+      .finally(() => setTagsLoading(false));
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -39,6 +66,7 @@ export function ProgramDirectory({
         subject,
         grade,
         format,
+        location,
         costType,
         pageSize: 100
       })}`
@@ -51,7 +79,18 @@ export function ProgramDirectory({
         setError(fetchError instanceof Error ? fetchError.message : "活动数据加载失败");
       })
       .finally(() => setLoading(false));
-  }, [costType, format, grade, q, subject, type]);
+  }, [costType, format, grade, location, q, subject, type]);
+
+  const filterOptions = useMemo(
+    () => ({
+      programTypes: optionsFromTags(tags, "program_type", fallbackProgramTypes),
+      subjects: optionsFromTags(tags, "subject", fallbackSubjects),
+      grades: optionsFromTags(tags, "grade", fallbackGrades),
+      formats: optionsFromTags(tags, "format", fallbackFormats),
+      locations: optionsFromTags(tags, "location", fallbackLocations)
+    }),
+    [tags]
+  );
 
   const programs = useMemo(
     () =>
@@ -88,6 +127,9 @@ export function ProgramDirectory({
         if (format !== "all" && program.format !== format) {
           return false;
         }
+        if (location !== "all" && !normalizeText(program.location).includes(normalizeText(location))) {
+          return false;
+        }
         if (costType === "free" && !includesAny(program.costText, ["免费", "承担"])) {
           return false;
         }
@@ -96,7 +138,7 @@ export function ProgramDirectory({
         }
         return true;
       }),
-    [costType, format, grade, programData, q, subject, type]
+    [costType, format, grade, location, programData, q, subject, type]
   );
 
   return (
@@ -104,12 +146,16 @@ export function ProgramDirectory({
       <aside className="border-b border-border bg-surface p-7 lg:border-b-0 lg:border-r">
         <h2 className="text-base font-black tracking-normal text-ink">筛选条件</h2>
         <div className="mt-6 space-y-7">
-          <FilterGroup label="活动分类" onChange={setType} options={programTypes} value={type} />
-          <FilterGroup label="学科方向" onChange={setSubject} options={subjects} value={subject} />
-          <FilterGroup label="适合年级" onChange={setGrade} options={grades} value={grade} />
-          <FilterGroup label="形式" onChange={setFormat} options={formats} value={format} />
+          <FilterGroup label="活动分类" onChange={setType} options={filterOptions.programTypes} value={type} />
+          <FilterGroup label="学科方向" onChange={setSubject} options={filterOptions.subjects} value={subject} />
+          <FilterGroup label="适合年级" onChange={setGrade} options={filterOptions.grades} value={grade} />
+          <FilterGroup label="形式" onChange={setFormat} options={filterOptions.formats} value={format} />
+          <FilterGroup label="地点" onChange={setLocation} options={filterOptions.locations} value={location} />
           <FilterGroup label="费用" onChange={setCostType} options={costs} value={costType} />
         </div>
+        {tagsLoading ? (
+          <p className="mt-6 text-xs font-bold leading-6 text-muted">正在加载标签配置...</p>
+        ) : null}
       </aside>
 
       <section className="bg-soft p-6 lg:p-9">

@@ -93,6 +93,15 @@ export type ProgramCaseRelation = {
   createdAt: string;
 };
 
+export type Tag = {
+  id: string;
+  name: string;
+  group: "program_type" | "subject" | "grade" | "major" | "location" | "format";
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ImportJob = {
   id: string;
   fileName: string;

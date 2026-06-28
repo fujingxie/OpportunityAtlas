@@ -397,7 +397,7 @@ function toCaseDraftData(form: CaseDraftForm) {
 }
 
 function statusTone(status: string): "default" | "blue" | "green" | "amber" | "red" {
-  if (status === "published") {
+  if (status === "published" || status === "merged") {
     return "green";
   }
   if (status === "failed" || status === "rejected") {
@@ -656,6 +656,36 @@ export function AdminImportPage() {
     }
   };
 
+  const mergeSelectedItem = async (programId: string) => {
+    if (!selectedJob || !selectedItem) {
+      return;
+    }
+    if (!window.confirm("确认将当前预览项合并到已有活动？")) {
+      return;
+    }
+
+    setSavingItemId(selectedItem.id);
+    setActionMessage("");
+    try {
+      await apiFetch<{ item: ImportItemView; programId: string }>(
+        `/api/admin/import/jobs/${selectedJob.id}/items/${selectedItem.id}/merge`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            programId,
+            strategy: "fill_missing"
+          })
+        }
+      );
+      setActionMessage("预览项已合并到已有活动。");
+      await reload();
+    } catch (mergeError) {
+      setActionMessage(mergeError instanceof Error ? mergeError.message : "合并失败");
+    } finally {
+      setSavingItemId("");
+    }
+  };
+
   return (
     <div>
       <PageHeading
@@ -838,6 +868,41 @@ export function AdminImportPage() {
                   <span className="text-sm font-bold text-secondary">{selectedItem.title}</span>
                 </div>
                 <ImportQualityPanel quality={selectedItem.quality} />
+                {selectedItem.status === "draft" &&
+                selectedItem.quality?.duplicatePrograms?.length ? (
+                  <div className="rounded-sm border border-warning/25 bg-warning/10 p-4">
+                    <h3 className="text-sm font-extrabold text-ink">同名活动候选</h3>
+                    <p className="mt-1 text-sm font-bold leading-6 text-secondary">
+                      可将当前预览项合并到已有活动。默认只填补空字段，并合并标签、亮点、材料等数组内容。
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      {selectedItem.quality.duplicatePrograms.map((program) => (
+                        <div
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border bg-surface px-3 py-3"
+                          key={program.id}
+                        >
+                          <div>
+                            <p className="text-sm font-extrabold text-ink">{program.name}</p>
+                            <p className="mt-1 text-xs font-bold text-secondary">
+                              {program.id} / {program.status}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <TextLink href={`/programs/${program.id}`}>查看</TextLink>
+                            <button
+                              className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                              disabled={savingItemId === selectedItem.id}
+                              onClick={() => void mergeSelectedItem(program.id)}
+                              type="button"
+                            >
+                              合并到此活动
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <DraftTextField
                     label="活动名称"

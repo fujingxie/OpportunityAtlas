@@ -101,10 +101,17 @@ export type ImportQualityIssue = {
   message: string;
 };
 
+export type ImportDuplicateProgram = {
+  id: string;
+  name: string;
+  status: RecordStatus;
+};
+
 export type ImportQualitySummary = {
   level: "ok" | ImportQualitySeverity;
   score: number;
   issues: ImportQualityIssue[];
+  duplicatePrograms?: ImportDuplicateProgram[];
 };
 
 export type Tag = {

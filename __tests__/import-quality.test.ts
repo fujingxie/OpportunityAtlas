@@ -33,7 +33,10 @@ describe("program import quality", () => {
   });
 
   it("warns for incomplete fields and existing activity names", () => {
-    const context = buildProgramImportQualityContext([], ["Example Research"]);
+    const context = buildProgramImportQualityContext(
+      [],
+      [{ id: "p-existing", name: "Example Research", status: "published" }]
+    );
     const quality = evaluateProgramImportQuality(
       {
         name: "Example Research",
@@ -63,6 +66,9 @@ describe("program import quality", () => {
         expect.objectContaining({ field: "requiredMaterials", severity: "warning" })
       ])
     );
+    expect(quality.duplicatePrograms).toEqual([
+      { id: "p-existing", name: "Example Research", status: "published" }
+    ]);
   });
 
   it("blocks duplicate names within the same import job", () => {

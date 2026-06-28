@@ -1,10 +1,24 @@
 import type { ImportItem } from "@prisma/client";
-import type { ImportQualityIssue, ImportQualitySummary, Program } from "@/lib/types";
+import type {
+  ImportDuplicateProgram,
+  ImportQualityIssue,
+  ImportQualitySummary,
+  Program,
+  RecordStatus
+} from "@/lib/types";
 import { normalizeText } from "@/lib/utils";
 import { programInputSchema } from "@/lib/server/validation";
 
+export type ExistingProgramReference =
+  | string
+  | {
+      id: string;
+      name: string;
+      status: string;
+    };
+
 export type ProgramImportQualityContext = {
-  existingProgramNames: Set<string>;
+  existingProgramsByName: Map<string, ImportDuplicateProgram[]>;
   currentJobNameCounts: Map<string, number>;
 };
 
@@ -53,9 +67,10 @@ function hasValidUrl(value: string) {
 
 export function buildProgramImportQualityContext(
   items: ImportItem[],
-  existingProgramNames: string[]
+  existingPrograms: ExistingProgramReference[]
 ): ProgramImportQualityContext {
   const currentJobNameCounts = new Map<string, number>();
+  const existingProgramsByName = new Map<string, ImportDuplicateProgram[]>();
 
   items.forEach((item) => {
     if (item.itemType !== "program" || item.status !== "draft") {
@@ -68,10 +83,22 @@ export function buildProgramImportQualityContext(
     currentJobNameCounts.set(name, (currentJobNameCounts.get(name) ?? 0) + 1);
   });
 
-  return {
-    existingProgramNames: new Set(existingProgramNames.map((name) => normalizeName(name)).filter(Boolean)),
-    currentJobNameCounts
-  };
+  existingPrograms.forEach((program) => {
+    const reference =
+      typeof program === "string"
+        ? { id: "", name: program, status: "published" as RecordStatus }
+        : { id: program.id, name: program.name, status: program.status as RecordStatus };
+    const normalized = normalizeName(reference.name);
+    if (!normalized) {
+      return;
+    }
+    existingProgramsByName.set(normalized, [
+      ...(existingProgramsByName.get(normalized) ?? []),
+      reference
+    ]);
+  });
+
+  return { existingProgramsByName, currentJobNameCounts };
 }
 
 export function evaluateProgramImportQuality(
@@ -83,6 +110,9 @@ export function evaluateProgramImportQuality(
   const name = asString(draft.name);
   const normalizedName = normalizeName(name);
   const officialUrl = asString(draft.officialUrl);
+  const duplicatePrograms = normalizedName
+    ? context?.existingProgramsByName.get(normalizedName) ?? []
+    : [];
 
   if (!name || name === "待补充" || /^未命名活动/.test(name)) {
     pushIssue(issues, "name", "error", "缺少可发布的活动名称");
@@ -90,7 +120,7 @@ export function evaluateProgramImportQuality(
   if (normalizedName && (context?.currentJobNameCounts.get(normalizedName) ?? 0) > 1) {
     pushIssue(issues, "name", "error", "同一导入任务内存在重复活动名称");
   }
-  if (normalizedName && context?.existingProgramNames.has(normalizedName)) {
+  if (duplicatePrograms.length) {
     pushIssue(issues, "name", "warning", "活动库已存在同名活动，发布前建议确认是否重复");
   }
   if (officialUrl && officialUrl !== "待补充" && !hasValidUrl(officialUrl)) {
@@ -141,6 +171,7 @@ export function evaluateProgramImportQuality(
   return {
     level: errorCount > 0 ? "error" : warningCount > 0 ? "warning" : "ok",
     score,
-    issues
+    issues,
+    duplicatePrograms: duplicatePrograms.filter((program) => Boolean(program.id))
   };
 }

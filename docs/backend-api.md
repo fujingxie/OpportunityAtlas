@@ -229,6 +229,7 @@ POST   /api/admin/import/jobs
 GET    /api/admin/import/jobs
 GET    /api/admin/import/jobs/:jobId
 PATCH  /api/admin/import/jobs/:jobId/items/:itemId
+POST   /api/admin/import/jobs/:jobId/items/:itemId/merge
 POST   /api/admin/import/jobs/:jobId/publish
 
 GET    /api/admin/programs
@@ -273,6 +274,11 @@ DELETE /api/admin/relations/:relationId
 type ImportQualitySummary = {
   level: 'ok' | 'warning' | 'error';
   score: number;
+  duplicatePrograms?: Array<{
+    id: string;
+    name: string;
+    status: 'draft' | 'pending_review' | 'published' | 'rejected' | 'archived';
+  }>;
   issues: Array<{
     field: string;
     severity: 'warning' | 'error';
@@ -286,6 +292,19 @@ type ImportQualitySummary = {
 `PATCH /api/admin/import/jobs/:jobId/items/:itemId`
 
 用于修改单条解析预览字段。后端需要保存人工校对后的版本，也支持将 `status` 改为 `rejected` 以跳过发布。PATCH 返回更新后的预览项和最新 `quality`。
+
+`POST /api/admin/import/jobs/:jobId/items/:itemId/merge`
+
+将活动预览项合并到已有活动，适用于 `quality.duplicatePrograms` 返回的同名候选。请求体：
+
+```ts
+{
+  programId?: string;
+  strategy?: 'fill_missing' | 'overwrite';
+}
+```
+
+默认 `fill_missing`：只填补已有活动中的空字段或 `待补充` 字段，数组字段去重合并；合并成功后预览项状态改为 `merged`，发布时不会重复创建活动。
 
 `POST /api/admin/import/jobs/:jobId/publish`
 
@@ -430,7 +449,7 @@ type ImportItem = {
   title: string;
   rawText?: string;
   parsedData: unknown;
-  status: 'draft' | 'pending_review' | 'published' | 'rejected';
+  status: 'draft' | 'pending_review' | 'published' | 'rejected' | 'merged';
   quality?: ImportQualitySummary;
   createdAt: string;
   updatedAt: string;

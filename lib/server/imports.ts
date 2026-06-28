@@ -4,32 +4,33 @@ import { getPrisma } from "@/lib/server/db";
 
 type ImportQualityContext = ReturnType<typeof buildProgramImportQualityContext>;
 
-async function getExistingProgramNames() {
-  const programs = await getPrisma().program.findMany({
+async function getExistingProgramReferences() {
+  return getPrisma().program.findMany({
     select: {
-      name: true
+      id: true,
+      name: true,
+      status: true
     }
   });
-  return programs.map((program) => program.name);
 }
 
 export async function serializeImportJobsWithQuality(
   jobs: Array<ImportJob & { items?: ImportItem[] }>
 ) {
-  const existingProgramNames = await getExistingProgramNames();
+  const existingPrograms = await getExistingProgramReferences();
   return jobs.map((job) =>
     serializeImportJob(
       job,
-      buildProgramImportQualityContext(job.items ?? [], existingProgramNames)
+      buildProgramImportQualityContext(job.items ?? [], existingPrograms)
     )
   );
 }
 
 export async function serializeImportJobWithQuality(job: ImportJob & { items?: ImportItem[] }) {
-  const existingProgramNames = await getExistingProgramNames();
+  const existingPrograms = await getExistingProgramReferences();
   return serializeImportJob(
     job,
-    buildProgramImportQualityContext(job.items ?? [], existingProgramNames)
+    buildProgramImportQualityContext(job.items ?? [], existingPrograms)
   );
 }
 

@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 const importItemPatchSchema = z.object({
   title: z.string().min(1).optional(),
   parsedData: z.record(z.string(), z.unknown()).optional(),
-  status: z.enum(["draft", "pending_review", "published", "rejected"]).optional()
+  status: z.enum(["draft", "pending_review", "published", "rejected", "merged"]).optional()
 });
 
 export async function PATCH(

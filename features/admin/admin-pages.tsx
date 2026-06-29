@@ -1047,6 +1047,7 @@ export function AdminProgramsPage() {
   const [mode, setMode] = useState<"create" | "edit">("create");
   const [selectedProgramId, setSelectedProgramId] = useState("");
   const [programForm, setProgramForm] = useState<ProgramDraftForm>(emptyProgramDraftForm);
+  const [programFormOpen, setProgramFormOpen] = useState(false);
   const [savingProgram, setSavingProgram] = useState(false);
   const [programMessage, setProgramMessage] = useState("");
   const [selectedProgramIds, setSelectedProgramIds] = useState<string[]>([]);
@@ -1060,6 +1061,7 @@ export function AdminProgramsPage() {
     setSelectedProgramId("");
     setProgramForm(emptyProgramDraftForm);
     setProgramMessage("");
+    setProgramFormOpen(true);
   };
 
   const startEditProgram = (program: Program) => {
@@ -1067,6 +1069,7 @@ export function AdminProgramsPage() {
     setSelectedProgramId(program.id);
     setProgramForm(toProgramDraftForm(program));
     setProgramMessage("");
+    setProgramFormOpen(true);
   };
 
   const updateProgramField = <K extends keyof ProgramDraftForm>(
@@ -1103,6 +1106,7 @@ export function AdminProgramsPage() {
       setSelectedProgramId(response.data.id);
       setProgramForm(toProgramDraftForm(response.data));
       await reload();
+      setProgramFormOpen(false);
     } catch (saveError) {
       setProgramMessage(saveError instanceof Error ? saveError.message : "保存失败");
     } finally {
@@ -1126,7 +1130,10 @@ export function AdminProgramsPage() {
       });
       setProgramMessage("活动已归档。");
       await reload();
-      startCreateProgram();
+      setMode("create");
+      setSelectedProgramId("");
+      setProgramForm(emptyProgramDraftForm);
+      setProgramFormOpen(false);
     } catch (archiveError) {
       setProgramMessage(archiveError instanceof Error ? archiveError.message : "归档失败");
     } finally {
@@ -1158,7 +1165,10 @@ export function AdminProgramsPage() {
       setProgramMessage(`已归档 ${ids.length} 个活动。`);
       await reload();
       if (selectedProgram && ids.includes(selectedProgram.id)) {
-        startCreateProgram();
+        setMode("create");
+        setSelectedProgramId("");
+        setProgramForm(emptyProgramDraftForm);
+        setProgramFormOpen(false);
       }
     } catch (bulkError) {
       setProgramMessage(bulkError instanceof Error ? bulkError.message : "批量归档失败");
@@ -1183,8 +1193,7 @@ export function AdminProgramsPage() {
         }
         title="活动管理"
       />
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_460px]">
-        <Card>
+      <Card>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-extrabold tracking-normal text-ink">活动列表</h2>
@@ -1223,6 +1232,9 @@ export function AdminProgramsPage() {
           </div>
           {loading ? <p className="mt-4 text-sm font-bold text-secondary">加载活动列表中...</p> : null}
           {error ? <p className="mt-4 text-sm font-bold text-danger">{error}</p> : null}
+          {programMessage ? (
+            <p className="mt-4 text-sm font-bold text-secondary">{programMessage}</p>
+          ) : null}
           {!loading && !error ? (
             <div className="mt-4">
               <DataTable
@@ -1268,24 +1280,22 @@ export function AdminProgramsPage() {
               />
             </div>
           ) : null}
-        </Card>
+      </Card>
 
-        <Card>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-extrabold tracking-normal text-ink">
-                {mode === "create" ? "新增活动" : "编辑活动"}
-              </h2>
-              <p className="mt-1 text-sm font-bold text-secondary">
-                {mode === "create" ? "手动录入运营活动资料" : selectedProgram?.name ?? "选择活动后编辑"}
-              </p>
-            </div>
-            {mode === "edit" && selectedProgram ? (
+      {programFormOpen ? (
+        <AdminModal
+          badge={
+            mode === "edit" && selectedProgram ? (
               <Badge tone={statusTone(selectedProgram.status)}>{selectedProgram.status}</Badge>
-            ) : null}
-          </div>
-
-          <div className="mt-5 space-y-4">
+            ) : null
+          }
+          description={
+            mode === "create" ? "手动录入运营活动资料" : selectedProgram?.name ?? "选择活动后编辑"
+          }
+          onClose={() => setProgramFormOpen(false)}
+          title={mode === "create" ? "新增活动" : "编辑活动"}
+        >
+          <div className="space-y-4">
             <ProgramFormFields form={programForm} onFieldChange={updateProgramField} showStatus />
             {programMessage ? (
               <p className="text-sm font-bold text-secondary">{programMessage}</p>
@@ -1311,8 +1321,8 @@ export function AdminProgramsPage() {
               ) : null}
             </div>
           </div>
-        </Card>
-      </div>
+        </AdminModal>
+      ) : null}
     </div>
   );
 }
@@ -1322,6 +1332,7 @@ export function AdminCasesPage() {
   const [mode, setMode] = useState<"create" | "edit">("create");
   const [selectedCaseId, setSelectedCaseId] = useState("");
   const [caseForm, setCaseForm] = useState<CaseDraftForm>(emptyCaseDraftForm);
+  const [caseFormOpen, setCaseFormOpen] = useState(false);
   const [savingCase, setSavingCase] = useState(false);
   const [caseMessage, setCaseMessage] = useState("");
   const [selectedCaseIds, setSelectedCaseIds] = useState<string[]>([]);
@@ -1335,6 +1346,7 @@ export function AdminCasesPage() {
     setSelectedCaseId("");
     setCaseForm(emptyCaseDraftForm);
     setCaseMessage("");
+    setCaseFormOpen(true);
   };
 
   const startEditCase = (studentCase: StudentCase) => {
@@ -1342,6 +1354,7 @@ export function AdminCasesPage() {
     setSelectedCaseId(studentCase.id);
     setCaseForm(toCaseDraftForm(studentCase));
     setCaseMessage("");
+    setCaseFormOpen(true);
   };
 
   const updateCaseField = <K extends keyof CaseDraftForm>(field: K, value: CaseDraftForm[K]) => {
@@ -1380,6 +1393,7 @@ export function AdminCasesPage() {
       setSelectedCaseId(response.data.id);
       setCaseForm(toCaseDraftForm(response.data));
       await reload();
+      setCaseFormOpen(false);
     } catch (saveError) {
       setCaseMessage(saveError instanceof Error ? saveError.message : "保存失败");
     } finally {
@@ -1403,7 +1417,10 @@ export function AdminCasesPage() {
       });
       setCaseMessage("案例已归档。");
       await reload();
-      startCreateCase();
+      setMode("create");
+      setSelectedCaseId("");
+      setCaseForm(emptyCaseDraftForm);
+      setCaseFormOpen(false);
     } catch (archiveError) {
       setCaseMessage(archiveError instanceof Error ? archiveError.message : "归档失败");
     } finally {
@@ -1435,7 +1452,10 @@ export function AdminCasesPage() {
       setCaseMessage(`已归档 ${ids.length} 个案例。`);
       await reload();
       if (selectedCase && ids.includes(selectedCase.id)) {
-        startCreateCase();
+        setMode("create");
+        setSelectedCaseId("");
+        setCaseForm(emptyCaseDraftForm);
+        setCaseFormOpen(false);
       }
     } catch (bulkError) {
       setCaseMessage(bulkError instanceof Error ? bulkError.message : "批量归档失败");
@@ -1460,8 +1480,7 @@ export function AdminCasesPage() {
         }
         title="案例管理"
       />
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_460px]">
-        <Card>
+      <Card>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-extrabold tracking-normal text-ink">案例列表</h2>
@@ -1498,6 +1517,9 @@ export function AdminCasesPage() {
           </div>
           {loading ? <p className="mt-4 text-sm font-bold text-secondary">加载案例列表中...</p> : null}
           {error ? <p className="mt-4 text-sm font-bold text-danger">{error}</p> : null}
+          {caseMessage ? (
+            <p className="mt-4 text-sm font-bold text-secondary">{caseMessage}</p>
+          ) : null}
           {!loading && !error ? (
             <div className="mt-4">
               <DataTable
@@ -1543,24 +1565,22 @@ export function AdminCasesPage() {
               />
             </div>
           ) : null}
-        </Card>
+      </Card>
 
-        <Card>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-extrabold tracking-normal text-ink">
-                {mode === "create" ? "新增案例" : "编辑案例"}
-              </h2>
-              <p className="mt-1 text-sm font-bold text-secondary">
-                {mode === "create" ? "手动录入匿名学生路径" : selectedCase?.anonymousCode ?? "选择案例后编辑"}
-              </p>
-            </div>
-            {mode === "edit" && selectedCase ? (
+      {caseFormOpen ? (
+        <AdminModal
+          badge={
+            mode === "edit" && selectedCase ? (
               <Badge tone={statusTone(selectedCase.status)}>{selectedCase.status}</Badge>
-            ) : null}
-          </div>
-
-          <div className="mt-5 space-y-4">
+            ) : null
+          }
+          description={
+            mode === "create" ? "手动录入匿名学生路径" : selectedCase?.anonymousCode ?? "选择案例后编辑"
+          }
+          onClose={() => setCaseFormOpen(false)}
+          title={mode === "create" ? "新增案例" : "编辑案例"}
+        >
+          <div className="space-y-4">
             <CaseFormFields form={caseForm} onFieldChange={updateCaseField} />
             {caseMessage ? (
               <p className="text-sm font-bold text-secondary">{caseMessage}</p>
@@ -1586,8 +1606,8 @@ export function AdminCasesPage() {
               ) : null}
             </div>
           </div>
-        </Card>
-      </div>
+        </AdminModal>
+      ) : null}
     </div>
   );
 }
@@ -1617,6 +1637,7 @@ export function AdminRelationsPage() {
     useState<ProgramCaseRelation["relationType"]>("participated");
   const [reasonsText, setReasonsText] = useState("");
   const [relationSearch, setRelationSearch] = useState("");
+  const [relationFormOpen, setRelationFormOpen] = useState(false);
   const [savingRelation, setSavingRelation] = useState(false);
   const [relationMessage, setRelationMessage] = useState("");
 
@@ -1704,6 +1725,7 @@ export function AdminRelationsPage() {
       setReasonsText("");
       setRelationMessage("关联已创建。");
       await reloadRelations();
+      setRelationFormOpen(false);
     } catch (createError) {
       setRelationMessage(createError instanceof Error ? createError.message : "创建关联失败");
     } finally {
@@ -1737,18 +1759,29 @@ export function AdminRelationsPage() {
         description="维护活动与匿名案例之间的显式关联，前台详情页会展示这些相关路径。"
         eyebrow="Admin"
         actions={
-          <button
-            className="rounded-sm border border-border bg-surface px-4 py-2 text-sm font-black text-primary hover:border-primary"
-            onClick={() => void reloadAllRelationData()}
-            type="button"
-          >
-            刷新数据
-          </button>
+          <>
+            <button
+              className="rounded-sm bg-primary px-4 py-2 text-sm font-black text-white"
+              onClick={() => {
+                setRelationMessage("");
+                setRelationFormOpen(true);
+              }}
+              type="button"
+            >
+              新增关联
+            </button>
+            <button
+              className="rounded-sm border border-border bg-surface px-4 py-2 text-sm font-black text-primary hover:border-primary"
+              onClick={() => void reloadAllRelationData()}
+              type="button"
+            >
+              刷新数据
+            </button>
+          </>
         }
         title="关联管理"
       />
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_430px]">
-        <Card>
+      <Card>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-extrabold tracking-normal text-ink">已建立关联</h2>
@@ -1768,6 +1801,9 @@ export function AdminRelationsPage() {
           ) : null}
           {relationsError ? (
             <p className="mt-4 text-sm font-bold text-danger">{relationsError}</p>
+          ) : null}
+          {relationMessage ? (
+            <p className="mt-4 text-sm font-bold text-secondary">{relationMessage}</p>
           ) : null}
           {!relationsLoading && !relationsError ? (
             <div className="mt-4">
@@ -1809,20 +1845,16 @@ export function AdminRelationsPage() {
               />
             </div>
           ) : null}
-        </Card>
+      </Card>
 
-        <Card>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-extrabold tracking-normal text-ink">新增关联</h2>
-              <p className="mt-1 text-sm font-bold text-secondary">
-                选择一条活动和一条案例，建立运营维护关系。
-              </p>
-            </div>
-            {existingRelation ? <Badge tone="amber">已存在</Badge> : <Badge tone="blue">新关联</Badge>}
-          </div>
-
-          <div className="mt-5 space-y-4">
+      {relationFormOpen ? (
+        <AdminModal
+          badge={existingRelation ? <Badge tone="amber">已存在</Badge> : <Badge tone="blue">新关联</Badge>}
+          description="选择一条活动和一条案例，建立运营维护关系。"
+          onClose={() => setRelationFormOpen(false)}
+          title="新增关联"
+        >
+          <div className="space-y-4">
             {programsLoading || casesLoading ? (
               <p className="text-sm font-bold text-secondary">加载活动和案例中...</p>
             ) : null}
@@ -1883,8 +1915,8 @@ export function AdminRelationsPage() {
               {savingRelation ? "保存中" : "创建关联"}
             </button>
           </div>
-        </Card>
-      </div>
+        </AdminModal>
+      ) : null}
     </div>
   );
 }
@@ -1894,6 +1926,7 @@ export function AdminTagsPage() {
   const [mode, setMode] = useState<"create" | "edit">("create");
   const [selectedTagId, setSelectedTagId] = useState("");
   const [tagForm, setTagForm] = useState<TagDraftForm>(emptyTagDraftForm);
+  const [tagFormOpen, setTagFormOpen] = useState(false);
   const [savingTag, setSavingTag] = useState(false);
   const [tagMessage, setTagMessage] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
@@ -1905,6 +1938,7 @@ export function AdminTagsPage() {
     setSelectedTagId("");
     setTagForm(emptyTagDraftForm);
     setTagMessage("");
+    setTagFormOpen(true);
   };
 
   const startEditTag = (tag: TagView) => {
@@ -1916,6 +1950,7 @@ export function AdminTagsPage() {
       enabled: tag.enabled
     });
     setTagMessage("");
+    setTagFormOpen(true);
   };
 
   const updateTagField = <K extends keyof TagDraftForm>(field: K, value: TagDraftForm[K]) => {
@@ -1954,6 +1989,7 @@ export function AdminTagsPage() {
         enabled: response.data.enabled
       });
       await reload();
+      setTagFormOpen(false);
     } catch (saveError) {
       setTagMessage(saveError instanceof Error ? saveError.message : "保存失败");
     } finally {
@@ -2005,7 +2041,10 @@ export function AdminTagsPage() {
       });
       setTagMessage("标签已停用。");
       await reload();
-      startCreateTag();
+      setMode("create");
+      setSelectedTagId("");
+      setTagForm(emptyTagDraftForm);
+      setTagFormOpen(false);
     } catch (disableError) {
       setTagMessage(disableError instanceof Error ? disableError.message : "停用失败");
     } finally {
@@ -2037,7 +2076,10 @@ export function AdminTagsPage() {
       setTagMessage(`已停用 ${ids.length} 个标签。`);
       await reload();
       if (selectedTag && ids.includes(selectedTag.id)) {
-        startCreateTag();
+        setMode("create");
+        setSelectedTagId("");
+        setTagForm(emptyTagDraftForm);
+        setTagFormOpen(false);
       }
     } catch (bulkError) {
       setTagMessage(bulkError instanceof Error ? bulkError.message : "批量停用失败");
@@ -2062,8 +2104,7 @@ export function AdminTagsPage() {
         }
         title="标签管理"
       />
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <Card>
+      <Card>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-extrabold tracking-normal text-ink">标签列表</h2>
@@ -2100,6 +2141,9 @@ export function AdminTagsPage() {
           </div>
           {loading ? <p className="mt-4 text-sm font-bold text-secondary">加载标签中...</p> : null}
           {error ? <p className="mt-4 text-sm font-bold text-danger">{error}</p> : null}
+          {tagMessage ? (
+            <p className="mt-4 text-sm font-bold text-secondary">{tagMessage}</p>
+          ) : null}
           {!loading && !error ? (
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {tags.map((tag) => (
@@ -2143,26 +2187,22 @@ export function AdminTagsPage() {
               ))}
             </div>
           ) : null}
-        </Card>
+      </Card>
 
-        <Card>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-extrabold tracking-normal text-ink">
-                {mode === "create" ? "新增标签" : "编辑标签"}
-              </h2>
-              <p className="mt-1 text-sm font-bold text-secondary">
-                {mode === "create" ? "维护筛选和归一化字典" : selectedTag?.name ?? "选择标签后编辑"}
-              </p>
-            </div>
-            {mode === "edit" && selectedTag ? (
+      {tagFormOpen ? (
+        <AdminModal
+          badge={
+            mode === "edit" && selectedTag ? (
               <Badge tone={selectedTag.enabled ? "green" : "amber"}>
                 {selectedTag.enabled ? "enabled" : "disabled"}
               </Badge>
-            ) : null}
-          </div>
-
-          <div className="mt-5 space-y-4">
+            ) : null
+          }
+          description={mode === "create" ? "维护筛选和归一化字典" : selectedTag?.name ?? "选择标签后编辑"}
+          onClose={() => setTagFormOpen(false)}
+          title={mode === "create" ? "新增标签" : "编辑标签"}
+        >
+          <div className="space-y-4">
             <DraftTextField
               label="标签名称"
               onChange={(value) => updateTagField("name", value)}
@@ -2217,7 +2257,68 @@ export function AdminTagsPage() {
               ) : null}
             </div>
           </div>
-        </Card>
+        </AdminModal>
+      ) : null}
+    </div>
+  );
+}
+
+function AdminModal({
+  title,
+  description,
+  badge,
+  children,
+  onClose
+}: {
+  title: string;
+  description?: string;
+  badge?: ReactNode;
+  children: ReactNode;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-50 overflow-y-auto bg-ink/45 px-4 py-6 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+      role="dialog"
+    >
+      <div className="mx-auto w-full max-w-3xl rounded-lg border border-border bg-surface p-6 shadow-2xl">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4">
+          <div>
+            <h2 className="text-2xl font-black tracking-normal text-ink">{title}</h2>
+            {description ? (
+              <p className="mt-2 text-sm font-bold leading-7 text-secondary">{description}</p>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-2">
+            {badge}
+            <button
+              aria-label="关闭弹窗"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-sm border border-border bg-surface text-lg font-black text-secondary hover:border-primary hover:text-primary"
+              onClick={onClose}
+              type="button"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        <div className="mt-5">{children}</div>
       </div>
     </div>
   );

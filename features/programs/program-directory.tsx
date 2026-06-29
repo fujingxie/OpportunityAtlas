@@ -142,8 +142,8 @@ export function ProgramDirectory({
   );
 
   return (
-    <div className="grid gap-0 overflow-hidden rounded-[34px] border border-border bg-surface shadow-panel lg:grid-cols-[300px_1fr]">
-      <aside className="border-b border-border bg-surface p-7 lg:border-b-0 lg:border-r">
+    <div className="grid gap-0 overflow-hidden rounded-[34px] border border-border bg-surface shadow-panel lg:h-[calc(100vh-124px)] lg:grid-cols-[300px_1fr]">
+      <aside className="scroll-pane border-b border-border bg-surface p-7 lg:h-full lg:overflow-y-auto lg:border-b-0 lg:border-r">
         <h2 className="text-base font-black tracking-normal text-ink">筛选条件</h2>
         <div className="mt-6 space-y-7">
           <FilterGroup label="活动分类" onChange={setType} options={filterOptions.programTypes} value={type} />
@@ -158,8 +158,8 @@ export function ProgramDirectory({
         ) : null}
       </aside>
 
-      <section className="bg-soft p-6 lg:p-9">
-        <div className="mb-7 flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
+      <section className="scroll-pane bg-soft p-5 lg:h-full lg:overflow-y-auto lg:p-8">
+        <div className="mb-6 flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
           <div>
             <h2 className="text-[34px] font-black leading-tight tracking-normal text-ink">
               活动库
@@ -185,7 +185,7 @@ export function ProgramDirectory({
           </div>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1fr_330px]">
+        <div className="grid gap-5 xl:grid-cols-[1fr_310px]">
           <div>
             {loading ? (
               <EmptyState description="正在请求后端活动接口。" title="加载活动中" />
@@ -255,8 +255,8 @@ function FilterGroup({
 
 function ProgramCardItem({ program }: { program: Program }) {
   return (
-    <Card className="rounded-[28px] p-7">
-      <div className="grid gap-6 lg:grid-cols-[1fr_190px]">
+    <Card className="rounded-[24px] p-5 lg:p-6">
+      <div className="grid gap-5 lg:grid-cols-[1fr_176px]">
         <div>
           <div className="flex flex-wrap gap-3">
             <Badge tone={program.type === "Competition" ? "green" : "blue"}>
@@ -266,13 +266,13 @@ function ProgramCardItem({ program }: { program: Program }) {
             <Badge>{program.format}</Badge>
             {program.status === "archived" ? <Badge tone="amber">待补字段</Badge> : null}
           </div>
-          <h2 className="mt-4 text-2xl font-black tracking-normal text-ink">
+          <h2 className="mt-3 text-[23px] font-black leading-tight tracking-normal text-ink">
             <Link className="hover:text-primary" href={`/programs/${program.id}`}>
               {program.name}
             </Link>
           </h2>
           <p className="mt-2 text-sm font-black text-secondary">{program.organization}</p>
-          <p className="mt-3 line-clamp-2 text-base font-bold leading-8 text-secondary">
+          <p className="mt-2 line-clamp-2 text-[15px] font-bold leading-7 text-secondary">
             {program.description}
           </p>
           <dl className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -308,7 +308,7 @@ function ProgramCardItem({ program }: { program: Program }) {
 
 function Meta({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-sm border border-border bg-soft p-4">
+    <div className="rounded-sm border border-border bg-soft p-3">
       <dt className="text-xs font-black uppercase tracking-[0.16em] text-muted">
         {label}
       </dt>
@@ -337,7 +337,7 @@ function RelatedCasePanel() {
   ];
 
   return (
-    <aside className="h-max rounded-[28px] border border-border bg-surface p-6 shadow-card">
+    <aside className="h-max rounded-[24px] border border-border bg-surface p-5 shadow-card xl:sticky xl:top-0">
       <h2 className="text-xl font-black tracking-normal text-ink">相关案例速览</h2>
       <div className="mt-5 space-y-3">
         {cases.map((studentCase) => (

@@ -116,6 +116,32 @@ select:focus-visible {
   overflow-x: auto;
 }
 
+.scroll-pane {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.scroll-pane::-webkit-scrollbar {
+  width: 10px;
+}
+
+.scroll-pane::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-pane::-webkit-scrollbar-thumb {
+  background: hsl(var(--color-border));
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.scroll-pane::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--color-border-hover));
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
 @media (max-width: 1024px) {
   .content-grid,
   .detail-grid {

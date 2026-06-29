@@ -128,7 +128,7 @@ export default function ProgramDetailPage({
           </Card>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="space-y-5 xl:sticky xl:top-24 xl:h-max">
           <Card className="rounded-[30px] p-7">
             <h2 className="text-xl font-black tracking-normal text-ink">适合学生参考</h2>
             <div className="mt-5 h-3 overflow-hidden rounded-full bg-border">

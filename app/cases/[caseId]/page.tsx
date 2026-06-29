@@ -51,7 +51,7 @@ export default function CaseDetailPage({ params }: { params: { caseId: string } 
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[370px_1fr_340px]">
-        <aside className="space-y-5">
+        <aside className="space-y-5 xl:sticky xl:top-24 xl:h-max">
           <Card className="rounded-[30px] p-7">
             <div className="grid h-20 w-20 place-items-center rounded-[27px] bg-[image:var(--gradient-primary)] text-3xl font-black text-white shadow-card">
               C
@@ -110,7 +110,7 @@ export default function CaseDetailPage({ params }: { params: { caseId: string } 
           </Card>
         </section>
 
-        <aside className="space-y-5">
+        <aside className="space-y-5 xl:sticky xl:top-24 xl:h-max">
           <Card className="rounded-[28px] !bg-navy p-7 text-white">
             <h2 className="text-xl font-black tracking-normal text-white">个人总结</h2>
             <p className="mt-3 text-sm font-bold leading-7 text-white/80">

@@ -127,8 +127,8 @@ export function CaseDirectory() {
   );
 
   return (
-    <div className="grid gap-0 overflow-hidden rounded-[34px] border border-border bg-surface shadow-panel lg:grid-cols-[300px_1fr]">
-      <aside className="border-b border-border bg-surface p-7 lg:border-b-0 lg:border-r">
+    <div className="grid gap-0 overflow-hidden rounded-[34px] border border-border bg-surface shadow-panel lg:h-[calc(100vh-124px)] lg:grid-cols-[300px_1fr]">
+      <aside className="scroll-pane border-b border-border bg-surface p-7 lg:h-full lg:overflow-y-auto lg:border-b-0 lg:border-r">
         <h2 className="text-base font-black tracking-normal text-ink">案例筛选</h2>
         <div className="mt-6 space-y-7">
           <FilterGroup label="年级" onChange={setGrade} options={filterOptions.grades} value={grade} />
@@ -162,8 +162,8 @@ export function CaseDirectory() {
         ) : null}
       </aside>
 
-      <section className="bg-soft p-6 lg:p-9">
-        <div className="mb-7 flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
+      <section className="scroll-pane bg-soft p-5 lg:h-full lg:overflow-y-auto lg:p-8">
+        <div className="mb-6 flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
           <div>
             <h2 className="text-[34px] font-black leading-tight tracking-normal text-ink">
               案例库
@@ -249,18 +249,18 @@ function FilterGroup({
 
 function CaseCardItem({ studentCase }: { studentCase: StudentCase }) {
   return (
-    <Card className="relative overflow-hidden rounded-[28px] p-7">
+    <Card className="relative overflow-hidden rounded-[24px] p-5 lg:p-6">
       <div className="flex flex-wrap gap-2">
         <Badge tone="amber">{studentCase.gpaRange}</Badge>
         <Badge>{studentCase.grade}</Badge>
         <Badge>{studentCase.schoolType}</Badge>
       </div>
-      <h2 className="mt-4 text-2xl font-black tracking-normal text-ink">
+      <h2 className="mt-3 text-[23px] font-black leading-tight tracking-normal text-ink">
         <Link className="hover:text-primary" href={`/cases/${studentCase.id}`}>
           {studentCase.anonymousCode}｜{studentCase.intendedMajor}
         </Link>
       </h2>
-      <p className="mt-3 text-sm leading-7 text-secondary">
+      <p className="mt-2 line-clamp-3 text-sm leading-7 text-secondary">
         {studentCase.academicSummary}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
@@ -268,7 +268,7 @@ function CaseCardItem({ studentCase }: { studentCase: StudentCase }) {
           <Badge key={tag}>{tag}</Badge>
         ))}
       </div>
-      <div className="mt-5 rounded-md border border-border bg-soft p-4">
+      <div className="mt-4 rounded-md border border-border bg-soft p-4">
         <p className="text-xs font-black uppercase tracking-[0.16em] text-muted">
           活动路径
         </p>

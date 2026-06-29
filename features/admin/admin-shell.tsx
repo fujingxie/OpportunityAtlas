@@ -17,9 +17,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <main className="min-h-[calc(100vh-76px)] px-4 py-8 sm:px-6 lg:px-9">
-      <div className="mx-auto grid max-w-[1440px] gap-0 overflow-hidden rounded-[34px] border border-border bg-soft shadow-panel lg:grid-cols-[250px_1fr]">
-        <aside className="bg-navy p-5 text-white">
+    <main className="h-[calc(100vh-76px)] overflow-hidden px-4 py-6 sm:px-6 lg:px-9">
+      <div className="mx-auto grid h-full max-w-[1440px] gap-0 overflow-hidden rounded-[34px] border border-border bg-soft shadow-panel lg:grid-cols-[250px_1fr]">
+        <aside className="scroll-pane bg-navy p-5 text-white lg:h-full lg:overflow-y-auto">
           <p className="px-2 text-xs font-black uppercase tracking-[0.22em] text-white/55">
             Admin
           </p>
@@ -45,7 +45,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             })}
           </nav>
         </aside>
-        <section className="min-w-0 p-6 lg:p-8">{children}</section>
+        <section className="scroll-pane min-w-0 overflow-y-auto p-5 lg:p-8">{children}</section>
       </div>
     </main>
   );

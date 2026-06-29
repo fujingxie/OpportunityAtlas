@@ -4,7 +4,7 @@ import { cx } from "@/lib/utils";
 
 export function PageShell({ children }: { children: ReactNode }) {
   return (
-    <main className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-9">
+    <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-9">
       {children}
     </main>
   );

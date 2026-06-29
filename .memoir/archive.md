@@ -35,6 +35,7 @@
 10. **活动-案例关联管理**：后台提供 `/admin/relations` 维护活动与匿名案例的显式关系；管理接口 `GET/POST/DELETE /api/admin/relations` 受 admin session 保护，前台活动详情和案例详情都会展示这些关联。
 11. **导入质量检测**：活动 DOCX 导入预览项会实时返回 `quality`，检查缺字段、官网格式、同任务重复和活动库同名；发布接口遇到 error 会返回 `QUALITY_CHECK_FAILED`，warning 允许发布。
 12. **导入重复项合并**：质量检查返回同名活动候选 `duplicatePrograms`；后台文档录入页可将 draft 预览项合并到已有活动，默认 `fill_missing` 只填补空字段并去重合并数组，合并后预览项状态为 `merged`，不会参与后续发布创建。
+13. **后台使用说明**：管理端左侧导航提供 `/admin/help` 使用说明页，面向运营管理员解释文档录入、活动/案例维护、关联管理、标签管理、发布状态和常见问题。
 
 ## 运行部署运维
 

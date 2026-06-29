@@ -10,7 +10,8 @@ const adminNav = [
   { href: "/admin/programs", label: "活动管理" },
   { href: "/admin/cases", label: "案例管理" },
   { href: "/admin/relations", label: "关联管理" },
-  { href: "/admin/tags", label: "标签管理" }
+  { href: "/admin/tags", label: "标签管理" },
+  { href: "/admin/help", label: "使用说明" }
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {

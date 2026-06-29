@@ -13,6 +13,19 @@ function getSessionSecret() {
   return process.env.SESSION_SECRET ?? "development-session-secret";
 }
 
+function shouldUseSecureSessionCookie() {
+  if (process.env.SESSION_COOKIE_SECURE) {
+    return process.env.SESSION_COOKIE_SECURE === "true";
+  }
+
+  const publicUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "";
+  if (publicUrl) {
+    return publicUrl.startsWith("https://");
+  }
+
+  return process.env.NODE_ENV === "production";
+}
+
 export function hashSessionToken(token: string) {
   return createHash("sha256")
     .update(`${getSessionSecret()}:${token}`)
@@ -48,7 +61,7 @@ export function attachSessionCookie(
   response.cookies.set(SESSION_COOKIE, session.token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureSessionCookie(),
     path: "/",
     expires: session.expiresAt
   });
@@ -58,7 +71,7 @@ export function clearSessionCookie(response: NextResponse) {
   response.cookies.set(SESSION_COOKIE, "", {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureSessionCookie(),
     path: "/",
     maxAge: 0
   });

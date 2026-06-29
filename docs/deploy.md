@@ -51,8 +51,11 @@ DATABASE_URL="postgresql://opportunity_atlas:同一个强密码@postgres:5432/op
 ADMIN_EMAIL="你的管理员邮箱"
 ADMIN_PASSWORD="替换成强管理员密码"
 SESSION_SECRET="替换成长随机字符串"
+SESSION_COOKIE_SECURE="false"
 NEXT_PUBLIC_APP_URL="http://38.76.166.42:3100"
 ```
+
+测试阶段使用 `http://38.76.166.42:3100`，所以 `SESSION_COOKIE_SECURE` 必须是 `false`，否则浏览器不会在 HTTP 下保存管理员 session cookie。后续接入 HTTPS 域名后再改为 `true`。
 
 生成 session secret 可用：
 

@@ -56,6 +56,7 @@ npm run start
 - 生产环境需配置 `DATABASE_URL`、`SESSION_SECRET`、`ADMIN_EMAIL`、`ADMIN_PASSWORD`、`UPLOAD_DIR`
 - 构建产物在 `.next/` 目录，使用 `next build` 后通过 Next.js runtime 运行
 - 生产部署提供 `Dockerfile`、`docker-compose.prod.yml`、`.env.production.example` 和 `docs/deploy.md`；目标服务器 80/443/3000 已占用，默认先将应用暴露到 `3100`，访问 `http://38.76.166.42:3100`
+- 通过 HTTP IP 测试部署时需设置 `SESSION_COOKIE_SECURE=false`；否则 production 下 Secure cookie 不会被浏览器保存，导致页面显示已登录但 `/api/admin/*` 返回未认证。接 HTTPS 后再改成 `true`。
 
 **已知运维要点**：
 - 项目使用 `postcss.config.mjs` 和 `tailwind.config.ts`，CSS 构建由 Tailwind 自动处理

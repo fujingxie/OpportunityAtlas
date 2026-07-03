@@ -7,8 +7,6 @@ import { apiFetch, toQueryString } from "@/lib/api-client";
 import type { StudentCase, Tag } from "@/lib/types";
 import { normalizeText } from "@/lib/utils";
 
-const fallbackGrades = ["G9", "G10", "G11", "G12"];
-const schoolTypes = ["all", "international", "public", "other"];
 const fallbackActivityTypes = ["Competition", "Summer School", "Research Program"];
 const fallbackMajors = ["Engineering", "Data Science", "Econ", "Humanities"];
 const resultTiers = ["all", "Top 20", "Top 30", "Selective", "Matched", "Developing", "Portfolio"];
@@ -27,8 +25,6 @@ function optionsFromTags(tags: Tag[], group: Tag["group"], fallback: string[]) {
 
 export function CaseDirectory() {
   const [q, setQ] = useState("");
-  const [grade, setGrade] = useState("all");
-  const [schoolType, setSchoolType] = useState("all");
   const [activityType, setActivityType] = useState("all");
   const [intendedMajor, setIntendedMajor] = useState("all");
   const [resultTier, setResultTier] = useState("all");
@@ -54,8 +50,6 @@ export function CaseDirectory() {
     apiFetch<StudentCase[]>(
       `/api/cases${toQueryString({
         q,
-        grade,
-        schoolType,
         activityType,
         intendedMajor,
         resultTier,
@@ -70,11 +64,10 @@ export function CaseDirectory() {
         setError(fetchError instanceof Error ? fetchError.message : "案例数据加载失败");
       })
       .finally(() => setLoading(false));
-  }, [activityType, grade, intendedMajor, q, resultTier, schoolType]);
+  }, [activityType, intendedMajor, q, resultTier]);
 
   const filterOptions = useMemo(
     () => ({
-      grades: optionsFromTags(tags, "grade", fallbackGrades),
       activityTypes: optionsFromTags(tags, "program_type", fallbackActivityTypes),
       majors: optionsFromTags(tags, "major", fallbackMajors)
     }),
@@ -100,12 +93,6 @@ export function CaseDirectory() {
           }
         }
 
-        if (grade !== "all" && studentCase.grade !== grade) {
-          return false;
-        }
-        if (schoolType !== "all" && studentCase.schoolType !== schoolType) {
-          return false;
-        }
         if (
           activityType !== "all" &&
           !studentCase.activityExperience.some((activity) => activity.type === activityType)
@@ -123,7 +110,7 @@ export function CaseDirectory() {
         }
         return true;
       }),
-    [activityType, caseData, grade, intendedMajor, q, resultTier, schoolType]
+    [activityType, caseData, intendedMajor, q, resultTier]
   );
 
   return (
@@ -131,13 +118,6 @@ export function CaseDirectory() {
       <aside className="scroll-pane border-b border-border bg-surface p-7 lg:h-full lg:overflow-y-auto lg:border-b-0 lg:border-r">
         <h2 className="text-base font-black tracking-normal text-ink">案例筛选</h2>
         <div className="mt-6 space-y-7">
-          <FilterGroup label="年级" onChange={setGrade} options={filterOptions.grades} value={grade} />
-          <FilterGroup
-            label="学校类型"
-            onChange={setSchoolType}
-            options={schoolTypes}
-            value={schoolType}
-          />
           <FilterGroup
             label="活动类型"
             onChange={setActivityType}
@@ -196,7 +176,7 @@ export function CaseDirectory() {
           </div>
         ) : (
           <EmptyState
-            description="当前筛选条件没有结果，可以调整年级、活动类型或结果层级。"
+            description="当前筛选条件没有结果，可以调整活动类型、申请方向或结果层级。"
             title="暂无案例结果"
           />
         )}

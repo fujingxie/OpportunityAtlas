@@ -35,11 +35,8 @@ export default function HomePage() {
       </div>
       <section className="relative mx-auto flex h-full max-w-[1180px] flex-col items-center justify-start pt-4 lg:pt-8">
         <div className="animate-enter flex w-full max-w-5xl flex-col items-center text-center">
-          <h1 className="mt-2 max-w-5xl text-[40px] font-black leading-[1.12] tracking-normal text-ink sm:text-[58px] lg:text-[68px]">
-            发现活动机会，
-            <span className="hidden sm:inline"> </span>
-            <br className="sm:hidden" />
-            连接真实案例路径
+          <h1 className="mt-2 w-full whitespace-nowrap text-center text-[clamp(34px,5vw,68px)] font-black leading-[1.12] tracking-normal text-ink">
+            发现活动机会，连接真实案例路径
           </h1>
           <p className="mt-6 max-w-4xl text-base font-medium leading-8 text-secondary sm:text-xl">
             检索竞赛、夏校、科研项目，也查看不同背景学生的活动组合与结果复盘

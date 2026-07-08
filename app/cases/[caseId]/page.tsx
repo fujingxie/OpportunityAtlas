@@ -46,63 +46,72 @@ export default function CaseDetailPage({ params }: { params: { caseId: string } 
 
   return (
     <PageShell>
-      <div className="mb-4">
+      <div className="mb-3">
         <TextLink href="/cases">返回案例库</TextLink>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[370px_1fr_340px]">
-        <aside className="space-y-5 xl:sticky xl:top-24 xl:h-max">
-          <Card className="rounded-[30px] p-7">
-            <div className="grid h-20 w-20 place-items-center rounded-[27px] bg-[image:var(--gradient-primary)] text-3xl font-black text-white shadow-card">
-              C
-            </div>
+      <Card className="rounded-[26px] p-5 lg:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
             <div className="flex flex-wrap gap-2">
               <Badge tone="amber">{studentCase.gpaRange}</Badge>
               <Badge>{studentCase.grade}</Badge>
-              <Badge>{studentCase.schoolType}</Badge>
+              <Badge>{schoolTypeLabel(studentCase.schoolType)}</Badge>
               {studentCase.resultTier ? <Badge tone="green">{studentCase.resultTier}</Badge> : null}
             </div>
-            <h2 className="mt-5 text-2xl font-black tracking-normal text-ink">
+            <h1 className="mt-3 text-[30px] font-black leading-tight tracking-normal text-ink lg:text-[38px]">
               {studentCase.anonymousCode}｜{studentCase.intendedMajor}
-            </h2>
-            <p className="mt-3 text-sm font-bold leading-7 text-secondary">
+            </h1>
+            <p className="mt-3 max-w-4xl text-sm font-bold leading-7 text-secondary lg:text-base">
               {studentCase.academicSummary}
             </p>
-            <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-              <Meta label="申请方向" value={studentCase.intendedMajor} />
-              <Meta label="结果摘要" value={studentCase.resultSummary} />
-            </dl>
-          </Card>
-        </aside>
+          </div>
+          <div className="grid shrink-0 gap-2 sm:grid-cols-2 lg:w-[360px]">
+            <Meta label="申请方向" value={studentCase.intendedMajor} />
+            <Meta label="结果" value={studentCase.resultSummary} />
+          </div>
+        </div>
+      </Card>
 
+      <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_330px]">
         <section className="space-y-5">
-          <Card className="rounded-[30px] p-7">
-            <h2 className="text-[30px] font-black tracking-normal text-ink">
-              活动路径与决策逻辑
-            </h2>
-            <div className="mt-5 space-y-4">
+          <Card className="rounded-[24px] p-5 lg:p-6">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">
+                  Path
+                </p>
+                <h2 className="mt-1 text-2xl font-black tracking-normal text-ink">活动路径</h2>
+              </div>
+              <p className="text-sm font-bold text-secondary">
+                共 {studentCase.activityExperience.length} 段经历
+              </p>
+            </div>
+            <div className="mt-4 divide-y divide-border overflow-hidden rounded-md border border-border bg-soft">
               {studentCase.activityExperience.map((activity) => (
                 <div
-                  className="grid gap-4 rounded-md border border-border bg-soft p-5 sm:grid-cols-[84px_1fr]"
+                  className="grid gap-3 bg-surface/55 p-4 sm:grid-cols-[88px_1fr]"
                   key={`${activity.stage}-${activity.programName}`}
                 >
                   <div className="text-sm font-black text-primary">{activity.stage}</div>
                   <div>
                     {activity.programId ? (
                       <Link
-                        className="text-lg font-black tracking-normal text-ink hover:text-primary"
+                        className="text-base font-black tracking-normal text-ink hover:text-primary"
                         href={`/programs/${activity.programId}`}
                       >
                         {activity.programName}
                       </Link>
                     ) : (
-                      <h3 className="text-lg font-black tracking-normal text-ink">
+                      <h3 className="text-base font-black tracking-normal text-ink">
                         {activity.programName}
                       </h3>
                     )}
-                    <p className="mt-2 text-sm leading-7 text-secondary">
-                      {activity.description}
-                    </p>
+                    {activity.description ? (
+                      <p className="mt-1 text-sm leading-6 text-secondary">
+                        {activity.description}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -111,36 +120,55 @@ export default function CaseDetailPage({ params }: { params: { caseId: string } 
         </section>
 
         <aside className="space-y-5 xl:sticky xl:top-24 xl:h-max">
-          <Card className="rounded-[28px] !bg-navy p-7 text-white">
-            <h2 className="text-xl font-black tracking-normal text-white">个人总结</h2>
-            <p className="mt-3 text-sm font-bold leading-7 text-white/80">
-              {studentCase.personalSummary}
-            </p>
-          </Card>
-          <Card className="rounded-[28px] p-7">
-            <h2 className="text-xl font-black tracking-normal text-ink">顾问复盘</h2>
-            <p className="mt-3 text-sm leading-7 text-secondary">
-              {studentCase.consultantReview}
-            </p>
+          <Card className="rounded-[24px] p-5">
+            <h2 className="text-lg font-black tracking-normal text-ink">关键信息</h2>
+            <dl className="mt-4 space-y-3">
+              <CompactMeta label="案例编号" value={studentCase.anonymousCode} />
+              <CompactMeta label="学术背景" value={studentCase.gpaRange} />
+              <CompactMeta label="就读类型" value={schoolTypeLabel(studentCase.schoolType)} />
+              {studentCase.resultTier ? (
+                <CompactMeta label="案例等级" value={studentCase.resultTier} />
+              ) : null}
+            </dl>
+            {studentCase.consultantReview ? (
+              <div className="mt-4 rounded-sm border border-warning/25 bg-warning/10 p-3">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-warning">复盘提示</p>
+                <p className="mt-2 text-sm font-bold leading-6 text-secondary">
+                  {studentCase.consultantReview}
+                </p>
+              </div>
+            ) : null}
           </Card>
 
-          <Card className="rounded-[28px] p-7">
-            <h2 className="text-xl font-black tracking-normal text-ink">关联活动</h2>
-            <div className="mt-4 space-y-3">
-              {relatedPrograms.map((program) => (
-                <Link
-                  className="block rounded-sm border border-border bg-soft p-3 hover:border-primary"
-                  href={`/programs/${program.id}`}
-                  key={program.id}
-                >
-                  <span className="block text-sm font-extrabold text-ink">{program.name}</span>
-                  <span className="mt-1 block text-xs font-bold text-secondary">
-                    {program.type} / {program.gradeRange}
-                  </span>
-                </Link>
+          {relatedPrograms.length ? (
+            <Card className="rounded-[24px] p-5">
+              <h2 className="text-lg font-black tracking-normal text-ink">关联活动</h2>
+              <div className="mt-3 space-y-2">
+                {relatedPrograms.map((program) => (
+                  <Link
+                    className="block rounded-sm border border-border bg-soft p-3 hover:border-primary"
+                    href={`/programs/${program.id}`}
+                    key={program.id}
+                  >
+                    <span className="line-clamp-2 text-sm font-extrabold leading-6 text-ink">
+                      {program.name}
+                    </span>
+                    <span className="mt-1 block text-xs font-bold text-secondary">
+                      {program.type} / {program.gradeRange}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </Card>
+          ) : null}
+
+          {studentCase.tags.length ? (
+            <div className="flex flex-wrap gap-2">
+              {studentCase.tags.slice(0, 8).map((tag) => (
+                <Badge key={tag}>{tag}</Badge>
               ))}
             </div>
-          </Card>
+          ) : null}
         </aside>
       </div>
     </PageShell>
@@ -153,7 +181,26 @@ function Meta({ label, value }: { label: string; value: string }) {
       <dt className="text-xs font-black uppercase tracking-[0.16em] text-muted">
         {label}
       </dt>
-      <dd className="mt-1 text-sm font-black leading-7 text-ink">{value}</dd>
+      <dd className="mt-1 text-sm font-black leading-6 text-ink">{value}</dd>
     </div>
   );
+}
+
+function CompactMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4 border-b border-border pb-3 last:border-b-0 last:pb-0">
+      <dt className="shrink-0 text-sm font-bold text-secondary">{label}</dt>
+      <dd className="text-right text-sm font-black leading-6 text-ink">{value}</dd>
+    </div>
+  );
+}
+
+function schoolTypeLabel(value: StudentCase["schoolType"]) {
+  if (value === "international") {
+    return "国际学校";
+  }
+  if (value === "public") {
+    return "公立学校";
+  }
+  return "其他";
 }

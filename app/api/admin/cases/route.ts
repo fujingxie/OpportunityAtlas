@@ -24,6 +24,8 @@ export async function GET(request: Request) {
       grade: searchParams.get("grade") ?? undefined,
       schoolType: searchParams.get("schoolType") ?? undefined,
       gpaRange: searchParams.get("gpaRange") ?? undefined,
+      curriculum: searchParams.get("curriculum") ?? undefined,
+      standardizedScore: searchParams.get("standardizedScore") ?? undefined,
       intendedMajor: searchParams.get("intendedMajor") ?? undefined,
       activityType: searchParams.get("activityType") ?? undefined,
       resultTier: searchParams.get("resultTier") ?? undefined

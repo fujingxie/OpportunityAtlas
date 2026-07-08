@@ -1,6 +1,7 @@
 import { fail, ok } from "@/lib/server/api-response";
 import { requireAdmin } from "@/lib/server/auth";
 import { getPrisma } from "@/lib/server/db";
+import { toCaseCreateInput } from "@/lib/server/case-drafts";
 import { buildProgramImportQualityContext, evaluateProgramImportQuality } from "@/lib/server/import-quality";
 import { serializeImportJobWithQuality } from "@/lib/server/imports";
 import { toProgramCreateInput } from "@/lib/server/program-drafts";
@@ -21,8 +22,45 @@ export async function POST(_request: Request, { params }: { params: { jobId: str
   if (!job) {
     return fail("NOT_FOUND", "导入任务不存在", 404);
   }
+  if (job.sourceType === "case") {
+    const publishableItems = job.items.filter(
+      (item) => item.itemType === "case" && item.status === "draft"
+    );
+
+    try {
+      const updated = await getPrisma().$transaction(async (tx) => {
+        for (const item of publishableItems) {
+          await tx.studentCase.create({
+            data: {
+              ...toCaseCreateInput(item.parsedData),
+              status: "published"
+            }
+          });
+          await tx.importItem.update({
+            where: { id: item.id },
+            data: { status: "published" }
+          });
+        }
+
+        return tx.importJob.update({
+          where: { id: params.jobId },
+          data: {
+            status: "published",
+            progress: 100
+          },
+          include: { items: true }
+        });
+      });
+
+      return ok(await serializeImportJobWithQuality(updated));
+    } catch (error) {
+      return fail("PUBLISH_FAILED", "案例导入发布失败，请检查预览项字段或案例编号是否重复", 400, {
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  }
   if (job.sourceType !== "program") {
-    return fail("UNSUPPORTED_SOURCE_TYPE", "当前版本仅支持发布活动导入任务", 422);
+    return fail("UNSUPPORTED_SOURCE_TYPE", "当前版本仅支持发布活动或案例导入任务", 422);
   }
 
   const publishableItems = job.items.filter(

@@ -19,6 +19,8 @@ export type CaseQuery = {
   grade?: string;
   schoolType?: string;
   gpaRange?: string;
+  curriculum?: string;
+  standardizedScore?: string;
   intendedMajor?: string;
   activityType?: string;
   resultTier?: string;
@@ -115,6 +117,25 @@ function filterCase(studentCase: StudentCase, query: CaseQuery) {
   }
 
   if (query.gpaRange && query.gpaRange !== "all" && studentCase.gpaRange !== query.gpaRange) {
+    return false;
+  }
+
+  if (
+    query.curriculum &&
+    query.curriculum !== "all" &&
+    !normalizeText(
+      [studentCase.gpaRange, studentCase.academicSummary, ...studentCase.tags].join(" ")
+    ).includes(normalizeText(query.curriculum))
+  ) {
+    return false;
+  }
+
+  if (
+    query.standardizedScore &&
+    !normalizeText([studentCase.gpaRange, studentCase.academicSummary].join(" ")).includes(
+      normalizeText(query.standardizedScore)
+    )
+  ) {
     return false;
   }
 

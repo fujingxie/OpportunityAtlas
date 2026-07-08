@@ -20,7 +20,7 @@
 - **服务端接口**：Next.js Route Handlers
 - **数据库**：PostgreSQL + Prisma 7
 - **鉴权**：邮箱/密码登录 + HttpOnly session cookie + `viewer/admin` 角色
-- **文档导入**：一期使用 `mammoth` 解析 DOCX 文本，上传时通过 `sourceType` 显式区分活动/案例；当前已实现活动文档规则解析，不接 AI 解析
+- **文档导入**：一期使用 `mammoth` 解析 DOCX 文本，上传时通过 `sourceType` 显式区分活动/案例；当前已实现活动文档规则解析和案例库模板解析，不接 AI 解析
 
 **关键设计决策**：
 1. **App Router 架构**：使用 Next.js 14 的 App Router，路由结构按功能模块划分（`app/admin/`、`app/cases/`、`app/programs/`）
@@ -30,8 +30,8 @@
 5. **权限守卫**：通过 `components/admin-guard.tsx` 实现基本的管理员路由保护
 6. **首页设计方向**：首页采用居中品牌叙事、搜索框、热门标签和两个视觉入口卡片（活动库 / 案例库），保留一屏式桌面构图，不再使用左右仪表盘式首页。
 7. **真实后端接入方向**：后端与前端同仓库，使用 `app/api/**/route.ts` 实现接口；数据库模型位于 `prisma/schema.prisma`，本地 seed 复用已有 mock 活动和案例数据。
-8. **文档导入分流**：管理端上传接口 `POST /api/admin/import/jobs` 使用 `sourceType=program|case|mixed|unknown` 区分文档类型；一期仅解析活动文档，案例文档字段模板确认后再实现解析器。
-9. **标签驱动筛选**：公开接口 `GET /api/tags` 只返回启用标签，活动库/案例库筛选项由该接口按分组生成，并保留兜底选项防止空配置导致筛选不可用。
+8. **文档导入分流**：管理端上传接口 `POST /api/admin/import/jobs` 使用 `sourceType=program|case|mixed|unknown` 区分文档类型；活动文档解析为 `Program` 草稿，案例库模板解析为 `StudentCase + CaseActivity` 草稿，`mixed/unknown` 暂不支持。
+9. **筛选设计**：公开接口 `GET /api/tags` 只返回启用标签，活动库筛选项由该接口按分组生成；案例库改为问答式筛选，按就读体系、标化成绩和案例等级过滤。
 10. **活动-案例关联管理**：后台提供 `/admin/relations` 维护活动与匿名案例的显式关系；管理接口 `GET/POST/DELETE /api/admin/relations` 受 admin session 保护，前台活动详情和案例详情都会展示这些关联。
 11. **导入质量检测**：活动 DOCX 导入预览项会实时返回 `quality`，检查缺字段、官网格式、同任务重复和活动库同名；发布接口遇到 error 会返回 `QUALITY_CHECK_FAILED`，warning 允许发布。
 12. **导入重复项合并**：质量检查返回同名活动候选 `duplicatePrograms`；后台文档录入页可将 draft 预览项合并到已有活动，默认 `fill_missing` 只填补空字段并去重合并数组，合并后预览项状态为 `merged`，不会参与后续发布创建。
@@ -70,7 +70,7 @@ npm run start
 **待办事项**：
 1. **后端 API 接入深化**：真实 API 骨架已实现，后续需在本机 PostgreSQL 环境完成端到端数据烟测
 2. **认证系统上线化**：当前为基础邮箱/密码 + session，后续可补充密码重置、审计日志和更细角色权限
-3. **管理端编辑体验**：文档录入页已支持活动 DOCX 上传、预览列表、质量检查、单条预览编辑、跳过发布、重复项合并和批量发布；活动、案例、标签与活动-案例关联管理页已支持基础维护。后续重点是端到端烟测、案例文档解析和更细的表单体验。
+3. **管理端编辑体验**：文档录入页已支持活动 DOCX 上传、预览列表、质量检查、单条预览编辑、跳过发布、重复项合并和批量发布；案例 DOCX 模板可解析 50 条案例并发布到案例库。活动、案例、标签与活动-案例关联管理页已支持基础维护，后续重点是端到端烟测和更细的表单体验。
 4. **文档维护**：`docs/backend-api.md` 已提供后端接口契约，后续需随真实接口变更保持同步
 
 **已知问题**：

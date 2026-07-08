@@ -2,10 +2,14 @@ import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import mammoth from "mammoth";
-import type { Program } from "@/lib/types";
+import type { Program, StudentCase } from "@/lib/types";
 
 type ParsedImportProgram = Partial<Program> & {
   name: string;
+};
+
+type ParsedImportCase = Partial<StudentCase> & {
+  anonymousCode: string;
 };
 
 export type ImportSourceType = "program" | "case" | "mixed" | "unknown";
@@ -102,6 +106,106 @@ function getHeadingTitle(block: string) {
 function extractGrades(gradeRange: string) {
   const matches = gradeRange.match(/G\d{1,2}/gi) ?? [];
   return Array.from(new Set(matches.map((grade) => grade.toUpperCase())));
+}
+
+function extractCaseIndex(text: string, fallbackIndex: number) {
+  const match = text.match(/案例\s*(\d+)/);
+  return match?.[1] ? Number(match[1]) : fallbackIndex + 1;
+}
+
+function inferCaseTier(sectionTitle: string) {
+  if (/顶尖/.test(sectionTitle)) {
+    return "顶尖";
+  }
+  if (/优秀|中等|Top20/i.test(sectionTitle)) {
+    return "中等";
+  }
+  if (/普通|主流/.test(sectionTitle)) {
+    return "普通";
+  }
+  if (/滑档|反面|失败/.test(sectionTitle)) {
+    return "失败";
+  }
+  return "普通";
+}
+
+function extractCaseMajor(pathPosition: string | undefined) {
+  const cleaned = (pathPosition ?? "")
+    .replace(/（.*?）/g, "")
+    .replace(/\(.*?\)/g, "")
+    .replace(/^(顶尖|优秀|普通|滑档|失败|中等)/, "")
+    .trim();
+  return cleaned || pathPosition || "待补充";
+}
+
+function inferCaseSchoolType(curriculum: string | undefined): StudentCase["schoolType"] {
+  return curriculum ? "international" : "other";
+}
+
+function inferLanguageTag(languageScore: string | undefined) {
+  if (!languageScore) {
+    return undefined;
+  }
+  if (/雅思|IELTS/i.test(languageScore)) {
+    return "雅思";
+  }
+  if (/托福|TOEFL/i.test(languageScore)) {
+    return "托福";
+  }
+  if (/SAT/i.test(languageScore)) {
+    return "SAT";
+  }
+  return undefined;
+}
+
+function buildCaseActivityExperience(block: string): StudentCase["activityExperience"] {
+  const activityFields: Array<{
+    label: string;
+    type: string;
+    stage: string;
+  }> = [
+    { label: "竞赛", type: "Competition", stage: "竞赛" },
+    { label: "夏校", type: "Summer School", stage: "夏校" },
+    { label: "科研", type: "Research Program", stage: "科研" }
+  ];
+  const activities: StudentCase["activityExperience"] = [];
+
+  for (const field of activityFields) {
+    const value = extractField(block, [field.label]);
+    if (value) {
+      activities.push({
+        programName: value,
+        type: field.type,
+        stage: field.stage,
+        description: value
+      });
+    }
+  }
+
+  return activities;
+}
+
+function calculateCaseCompleteness(studentCase: Partial<StudentCase>) {
+  const keys: Array<keyof StudentCase> = [
+    "anonymousCode",
+    "grade",
+    "schoolType",
+    "gpaRange",
+    "academicSummary",
+    "activityExperience",
+    "intendedMajor",
+    "resultSummary",
+    "resultTier",
+    "personalSummary",
+    "consultantReview",
+    "tags"
+  ];
+  const present = keys.filter((key) => {
+    const value = studentCase[key];
+    return Array.isArray(value) ? value.length > 0 : Boolean(value);
+  }).length;
+
+  return Math.round((present / keys.length) * 100);
 }
 
 function inferSubjectTag(subjectArea: string) {
@@ -225,6 +329,67 @@ function parseProgramBlock(block: string, index: number): ParsedImportProgram {
   };
 }
 
+function parseCaseBlock(block: string, index: number, sectionTitle: string): ParsedImportCase {
+  const caseIndex = extractCaseIndex(block, index);
+  const curriculum = extractField(block, ["就读体系", "课程体系", "体系"]);
+  const standardizedScore = extractField(block, ["标化成绩", "成绩"]);
+  const languageScore = extractField(block, ["语言成绩", "语言"]);
+  const competitions = extractField(block, ["竞赛"]);
+  const summerSchool = extractField(block, ["夏校"]);
+  const research = extractField(block, ["科研"]);
+  const applicationRegion = extractField(block, ["申请地区", "申请国家/地区", "地区"]);
+  const pathPosition = extractField(block, ["路径定位", "定位"]);
+  const resultTier = inferCaseTier(sectionTitle);
+  const intendedMajor = extractCaseMajor(pathPosition);
+  const warning = pathPosition?.match(/[（(](.*?)[）)]/)?.[1];
+  const languageTag = inferLanguageTag(languageScore);
+  const tags = Array.from(
+    new Set(
+      [
+        curriculum,
+        resultTier,
+        intendedMajor,
+        languageTag,
+        ...splitList(applicationRegion),
+        competitions ? "竞赛" : undefined,
+        summerSchool ? "夏校" : undefined,
+        research ? "科研" : undefined
+      ].filter(Boolean) as string[]
+    )
+  );
+
+  const studentCase: ParsedImportCase = {
+    anonymousCode: `OA-${String(caseIndex).padStart(3, "0")}`,
+    grade: "G11",
+    schoolType: inferCaseSchoolType(curriculum),
+    gpaRange: [curriculum, standardizedScore].filter(Boolean).join(" ") || "待补充",
+    academicSummary: joinOptional(
+      curriculum ? `就读体系：${curriculum}` : undefined,
+      standardizedScore ? `标化成绩：${standardizedScore}` : undefined,
+      languageScore ? `语言成绩：${languageScore}` : undefined,
+      applicationRegion ? `申请地区：${applicationRegion}` : undefined
+    ),
+    activityExperience: buildCaseActivityExperience(block),
+    intendedMajor,
+    resultSummary: joinOptional(pathPosition, applicationRegion ? `申请地区：${applicationRegion}` : undefined) ?? "待补充",
+    resultTier,
+    personalSummary: joinOptional(
+      competitions ? `竞赛：${competitions}` : undefined,
+      summerSchool ? `夏校：${summerSchool}` : undefined,
+      research ? `科研：${research}` : undefined
+    ),
+    consultantReview: warning ? `避坑提示：${warning}` : undefined,
+    tags,
+    status: "draft",
+    completeness: 0
+  };
+
+  return {
+    ...studentCase,
+    completeness: calculateCaseCompleteness(studentCase)
+  };
+}
+
 export function parseProgramsFromText(text: string) {
   const normalized = text.replace(/\r/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
   if (!normalized) {
@@ -238,7 +403,7 @@ export function parseProgramsFromText(text: string) {
   for (const line of lines) {
     const trimmed = line.trim();
     const isProgramHeading = /^#{2,6}\s*\d+[.、)]\s+/.test(trimmed);
-    const isSectionHeading = /^#{1,6}\s*[一二三四五六七八九十]+[、.)]\s+/.test(trimmed);
+    const isSectionHeading = /^#{1,6}\s*[一二三四五六七八九十]+[、.)]\s*/.test(trimmed);
     if (isProgramHeading && current.length) {
       blocks.push(current.join("\n").trim());
       current = [];
@@ -269,6 +434,72 @@ export function parseProgramsFromText(text: string) {
       return {
         title: parsedData.name,
         rawText: block,
+        parsedData
+      };
+    });
+}
+
+export function parseCasesFromText(text: string) {
+  const normalized = text.replace(/\r/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  if (!normalized) {
+    return [];
+  }
+
+  const lines = normalized.split("\n");
+  const blocks: Array<{ sectionTitle: string; text: string }> = [];
+  let currentSectionTitle = "普通";
+  let current: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const isSectionHeading = /^#{1,6}\s*[一二三四五六七八九十]+[、.)]\s*/.test(trimmed);
+    const isCaseHeading = /^#{1,6}\s*案例\s*\d+/i.test(trimmed) || /^案例\s*\d+/i.test(trimmed);
+
+    if (isSectionHeading) {
+      if (current.length) {
+        blocks.push({
+          sectionTitle: currentSectionTitle,
+          text: current.join("\n").trim()
+        });
+        current = [];
+      }
+      currentSectionTitle = cleanLine(trimmed);
+      continue;
+    }
+
+    if (isCaseHeading && current.length) {
+      blocks.push({
+        sectionTitle: currentSectionTitle,
+        text: current.join("\n").trim()
+      });
+      current = [];
+    }
+
+    if (isCaseHeading || current.length) {
+      current.push(line);
+    }
+  }
+
+  if (current.length) {
+    blocks.push({
+      sectionTitle: currentSectionTitle,
+      text: current.join("\n").trim()
+    });
+  }
+
+  const fallbackBlocks = normalized
+    .split(/\n(?=\s*(?:#{1,6}\s*)?案例\s*\d+)/i)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 20)
+    .map((block) => ({ sectionTitle: "普通", text: block }));
+
+  return (blocks.length ? blocks : fallbackBlocks)
+    .slice(0, 160)
+    .map((block, index) => {
+      const parsedData = parseCaseBlock(block.text, index, block.sectionTitle);
+      return {
+        title: parsedData.anonymousCode,
+        rawText: block.text,
         parsedData
       };
     });

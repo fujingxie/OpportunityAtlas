@@ -1,7 +1,12 @@
 import { fail, ok } from "@/lib/server/api-response";
 import { requireAdmin } from "@/lib/server/auth";
 import { getPrisma } from "@/lib/server/db";
-import { parseProgramsFromText, saveUploadedDocx, type ImportSourceType } from "@/lib/server/import-docx";
+import {
+  parseCasesFromText,
+  parseProgramsFromText,
+  saveUploadedDocx,
+  type ImportSourceType
+} from "@/lib/server/import-docx";
 import { serializeImportJob, serializeImportJobsWithQuality, serializeImportJobWithQuality } from "@/lib/server/imports";
 
 export const runtime = "nodejs";
@@ -73,7 +78,7 @@ export async function POST(request: Request) {
     });
   }
 
-  if (sourceType !== "program") {
+  if (sourceType !== "program" && sourceType !== "case") {
     const failedJob = await getPrisma().importJob.create({
       data: {
         fileName: file.name,
@@ -82,20 +87,21 @@ export async function POST(request: Request) {
         sourceType,
         status: "failed",
         progress: 0,
-        errorMessage: "当前版本仅实现活动文档解析；案例文档需要先确认字段模板。"
+        errorMessage: "当前版本仅支持活动文档和案例文档解析。"
       },
       include: {
         items: true
       }
     });
 
-    return fail("UNSUPPORTED_SOURCE_TYPE", "当前版本仅实现活动文档解析", 422, {
+    return fail("UNSUPPORTED_SOURCE_TYPE", "当前版本仅支持活动文档和案例文档解析", 422, {
       job: serializeImportJob(failedJob)
     });
   }
 
   const saved = await saveUploadedDocx(file);
-  const parsedItems = parseProgramsFromText(saved.text);
+  const parsedItems =
+    sourceType === "case" ? parseCasesFromText(saved.text) : parseProgramsFromText(saved.text);
   const job = await getPrisma().importJob.create({
     data: {
       fileName: saved.fileName,
@@ -108,7 +114,7 @@ export async function POST(request: Request) {
       errorMessage: saved.messages.length ? saved.messages.map((message) => message.message).join("; ") : null,
       items: {
         create: parsedItems.map((item) => ({
-          itemType: "program",
+          itemType: sourceType,
           title: item.title,
           rawText: item.rawText,
           parsedData: item.parsedData,

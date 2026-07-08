@@ -1,58 +1,34 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Badge, Card, EmptyState } from "@/components/ui";
 import { apiFetch, toQueryString } from "@/lib/api-client";
-import type { StudentCase, Tag } from "@/lib/types";
+import type { StudentCase } from "@/lib/types";
 import { normalizeText } from "@/lib/utils";
 
-const fallbackActivityTypes = ["Competition", "Summer School", "Research Program"];
-const fallbackMajors = ["Engineering", "Data Science", "Econ", "Humanities"];
-const resultTiers = ["all", "Top 20", "Top 30", "Selective", "Matched", "Developing", "Portfolio"];
-
-function optionsFromTags(tags: Tag[], group: Tag["group"], fallback: string[]) {
-  const enabledNames = tags
-    .filter((tag) => tag.group === group && tag.enabled)
-    .map((tag) => tag.name);
-  const names = enabledNames.length ? enabledNames : fallback;
-  const orderedNames = [
-    ...fallback.filter((option) => names.includes(option)),
-    ...names.filter((option) => !fallback.includes(option))
-  ];
-  return ["all", ...Array.from(new Set(orderedNames))];
-}
+const curriculumOptions = ["IB", "A-Level", "AP", "OSSD"];
+const caseLevelOptions = ["顶尖", "中等", "普通", "失败"];
 
 export function CaseDirectory() {
-  const [q, setQ] = useState("");
-  const [activityType, setActivityType] = useState("all");
-  const [intendedMajor, setIntendedMajor] = useState("all");
-  const [resultTier, setResultTier] = useState("all");
+  const [curriculum, setCurriculum] = useState("");
+  const [standardizedScore, setStandardizedScore] = useState("");
+  const [caseLevel, setCaseLevel] = useState("");
+  const [draftCurriculum, setDraftCurriculum] = useState("");
+  const [draftStandardizedScore, setDraftStandardizedScore] = useState("");
+  const [draftCaseLevel, setDraftCaseLevel] = useState("");
+  const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const [caseData, setCaseData] = useState<StudentCase[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tagsLoading, setTagsLoading] = useState(true);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    apiFetch<Tag[]>("/api/tags")
-      .then((response) => {
-        setTags(response.data);
-      })
-      .catch(() => {
-        setTags([]);
-      })
-      .finally(() => setTagsLoading(false));
-  }, []);
 
   useEffect(() => {
     setLoading(true);
     apiFetch<StudentCase[]>(
       `/api/cases${toQueryString({
-        q,
-        activityType,
-        intendedMajor,
-        resultTier,
+        curriculum,
+        standardizedScore,
+        resultTier: caseLevel,
         pageSize: 100
       })}`
     )
@@ -64,82 +40,86 @@ export function CaseDirectory() {
         setError(fetchError instanceof Error ? fetchError.message : "案例数据加载失败");
       })
       .finally(() => setLoading(false));
-  }, [activityType, intendedMajor, q, resultTier]);
+  }, [caseLevel, curriculum, standardizedScore]);
 
-  const filterOptions = useMemo(
-    () => ({
-      activityTypes: optionsFromTags(tags, "program_type", fallbackActivityTypes),
-      majors: optionsFromTags(tags, "major", fallbackMajors)
-    }),
-    [tags]
-  );
+  const openQuestionnaire = () => {
+    setDraftCurriculum(curriculum);
+    setDraftStandardizedScore(standardizedScore);
+    setDraftCaseLevel(caseLevel);
+    setQuestionnaireOpen(true);
+  };
+
+  const resetFilters = () => {
+    setCurriculum("");
+    setStandardizedScore("");
+    setCaseLevel("");
+    setDraftCurriculum("");
+    setDraftStandardizedScore("");
+    setDraftCaseLevel("");
+  };
+
+  const applyQuestionnaire = () => {
+    setCurriculum(draftCurriculum);
+    setStandardizedScore(draftStandardizedScore.trim());
+    setCaseLevel(draftCaseLevel);
+    setQuestionnaireOpen(false);
+  };
 
   const cases = useMemo(
     () =>
       caseData.filter((studentCase) => {
-        const normalizedQ = normalizeText(q);
-        if (normalizedQ) {
-          const haystack = [
-            studentCase.anonymousCode,
-            studentCase.academicSummary,
-            studentCase.intendedMajor,
-            studentCase.resultSummary,
-            studentCase.personalSummary,
-            ...studentCase.tags,
-            ...studentCase.activityExperience.map((activity) => activity.programName)
-          ].join(" ");
-          if (!normalizeText(haystack).includes(normalizedQ)) {
-            return false;
-          }
+        const searchableProfile = [
+          studentCase.gpaRange,
+          studentCase.academicSummary,
+          studentCase.resultSummary,
+          ...studentCase.tags
+        ].join(" ");
+
+        if (curriculum && !normalizeText(searchableProfile).includes(normalizeText(curriculum))) {
+          return false;
         }
 
         if (
-          activityType !== "all" &&
-          !studentCase.activityExperience.some((activity) => activity.type === activityType)
+          standardizedScore &&
+          !normalizeText(searchableProfile).includes(normalizeText(standardizedScore))
         ) {
           return false;
         }
-        if (
-          intendedMajor !== "all" &&
-          !normalizeText(studentCase.intendedMajor).includes(normalizeText(intendedMajor))
-        ) {
-          return false;
-        }
-        if (resultTier !== "all" && studentCase.resultTier !== resultTier) {
+
+        if (caseLevel && studentCase.resultTier !== caseLevel) {
           return false;
         }
         return true;
       }),
-    [activityType, caseData, intendedMajor, q, resultTier]
+    [caseData, caseLevel, curriculum, standardizedScore]
   );
 
   return (
     <div className="grid gap-0 overflow-hidden rounded-[34px] border border-border bg-surface shadow-panel lg:h-[calc(100vh-124px)] lg:grid-cols-[300px_1fr]">
       <aside className="scroll-pane border-b border-border bg-surface p-7 lg:h-full lg:overflow-y-auto lg:border-b-0 lg:border-r">
         <h2 className="text-base font-black tracking-normal text-ink">案例筛选</h2>
-        <div className="mt-6 space-y-7">
-          <FilterGroup
-            label="活动类型"
-            onChange={setActivityType}
-            options={filterOptions.activityTypes}
-            value={activityType}
-          />
-          <FilterGroup
-            label="申请方向"
-            onChange={setIntendedMajor}
-            options={filterOptions.majors}
-            value={intendedMajor}
-          />
-          <FilterGroup
-            label="结果层级"
-            onChange={setResultTier}
-            options={resultTiers}
-            value={resultTier}
-          />
+        <p className="mt-3 text-sm font-bold leading-7 text-secondary">
+          通过三个问题快速筛出更接近自己背景的案例。
+        </p>
+        <button
+          className="mt-6 min-h-11 w-full rounded-sm bg-primary px-4 text-sm font-black text-white shadow-card"
+          onClick={openQuestionnaire}
+          type="button"
+        >
+          填写筛选问题
+        </button>
+        <div className="mt-6 space-y-3">
+          <FilterSummary label="就读体系" value={curriculum || "未选择"} />
+          <FilterSummary label="标化成绩" value={standardizedScore || "未填写"} />
+          <FilterSummary label="案例等级" value={caseLevel || "未选择"} />
         </div>
-        {tagsLoading ? (
-          <p className="mt-6 text-xs font-bold leading-6 text-muted">正在加载标签配置...</p>
-        ) : null}
+        <button
+          className="mt-5 min-h-10 w-full rounded-sm border border-border bg-surface px-4 text-sm font-black text-primary hover:border-primary"
+          onClick={resetFilters}
+          type="button"
+        >
+          清空筛选
+        </button>
       </aside>
 
       <section className="scroll-pane bg-soft p-5 lg:h-full lg:overflow-y-auto lg:p-8">
@@ -152,16 +132,13 @@ export function CaseDirectory() {
               不是只看成功故事，而是比较不同背景、路径和结果。
             </p>
           </div>
-          <label className="flex min-h-12 items-center gap-2 rounded-sm border border-border bg-surface px-4 text-sm font-black text-secondary shadow-card">
-            <span>⌕</span>
-            <input
-              className="w-[240px] border-0 bg-transparent text-sm font-bold text-ink outline-none placeholder:text-muted"
-              id="case-search"
-              onChange={(event) => setQ(event.target.value)}
-              placeholder="搜索案例"
-              value={q}
-            />
-          </label>
+          <button
+            className="min-h-12 rounded-sm border border-border bg-surface px-5 text-sm font-black text-primary shadow-card hover:border-primary"
+            onClick={openQuestionnaire}
+            type="button"
+          >
+            按问题筛选案例
+          </button>
         </div>
 
         {loading ? (
@@ -176,54 +153,178 @@ export function CaseDirectory() {
           </div>
         ) : (
           <EmptyState
-            description="当前筛选条件没有结果，可以调整活动类型、申请方向或结果层级。"
+            description="当前筛选条件没有结果，可以调整就读体系、标化成绩或案例等级。"
             title="暂无案例结果"
           />
         )}
       </section>
+      {questionnaireOpen ? (
+        <CaseQuestionnaireModal
+          caseLevel={draftCaseLevel}
+          curriculum={draftCurriculum}
+          onApply={applyQuestionnaire}
+          onCaseLevelChange={setDraftCaseLevel}
+          onClose={() => setQuestionnaireOpen(false)}
+          onCurriculumChange={setDraftCurriculum}
+          onScoreChange={setDraftStandardizedScore}
+          onReset={() => {
+            setDraftCurriculum("");
+            setDraftStandardizedScore("");
+            setDraftCaseLevel("");
+          }}
+          standardizedScore={draftStandardizedScore}
+        />
+      ) : null}
     </div>
   );
 }
 
-function FilterGroup({
-  label,
-  options,
-  value,
-  onChange
+function FilterSummary({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-sm border border-border bg-soft px-4 py-3">
+      <p className="text-xs font-black uppercase tracking-[0.14em] text-muted">{label}</p>
+      <p className="mt-1 text-sm font-black text-ink">{value}</p>
+    </div>
+  );
+}
+
+function CaseQuestionnaireModal({
+  curriculum,
+  standardizedScore,
+  caseLevel,
+  onCurriculumChange,
+  onScoreChange,
+  onCaseLevelChange,
+  onReset,
+  onApply,
+  onClose
 }: {
-  label: string;
-  options: string[];
-  value: string;
-  onChange: (value: string) => void;
+  curriculum: string;
+  standardizedScore: string;
+  caseLevel: string;
+  onCurriculumChange: (value: string) => void;
+  onScoreChange: (value: string) => void;
+  onCaseLevelChange: (value: string) => void;
+  onReset: () => void;
+  onApply: () => void;
+  onClose: () => void;
 }) {
   return (
-    <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
-      <h3 className="text-sm font-black tracking-normal text-ink">{label}</h3>
-      <div className="mt-3 space-y-2">
-        {options.map((option) => {
-          const active = value === option;
-          return (
-            <button
-              className="flex min-h-9 w-full items-center justify-between rounded-sm px-1 text-left text-sm font-black text-secondary hover:text-primary"
-              key={option}
-              onClick={() => onChange(option)}
-              type="button"
-            >
-              <span>{option === "all" ? "全部" : option}</span>
-              <span
-                className={`grid h-5 w-5 place-items-center rounded-[6px] border text-[11px] ${
-                  active
-                    ? "border-primary bg-primary text-white"
-                    : "border-border bg-surface text-transparent"
-                }`}
-              >
-                ✓
-              </span>
-            </button>
-          );
-        })}
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/45 p-4">
+      <div className="max-h-[calc(100vh-32px)] w-full max-w-[680px] overflow-auto rounded-[28px] border border-border bg-surface p-6 shadow-panel">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">
+              Case Filter
+            </p>
+            <h2 className="mt-2 text-2xl font-black tracking-normal text-ink">案例筛选问题</h2>
+          </div>
+          <button
+            className="grid h-10 w-10 place-items-center rounded-sm border border-border bg-surface text-lg font-black text-secondary hover:border-primary hover:text-primary"
+            onClick={onClose}
+            type="button"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="mt-6 space-y-6">
+          <QuestionBlock label="1. 请选择你所就读的体系">
+            <div className="grid gap-2 sm:grid-cols-4">
+              {curriculumOptions.map((option) => (
+                <ChoiceButton
+                  active={curriculum === option}
+                  key={option}
+                  onClick={() => onCurriculumChange(option)}
+                >
+                  {option}
+                </ChoiceButton>
+              ))}
+            </div>
+          </QuestionBlock>
+
+          <QuestionBlock label="2. 请输入你的标化成绩">
+            <input
+              className="min-h-12 w-full rounded-sm border border-border bg-soft px-4 text-sm font-bold text-ink outline-none placeholder:text-muted focus:border-primary"
+              onChange={(event) => onScoreChange(event.target.value)}
+              placeholder="例如：IB 42、4A*、SAT 1550"
+              value={standardizedScore}
+            />
+          </QuestionBlock>
+
+          <QuestionBlock label="3. 请选择你想要查看的案例等级">
+            <div className="grid gap-2 sm:grid-cols-4">
+              {caseLevelOptions.map((option) => (
+                <ChoiceButton
+                  active={caseLevel === option}
+                  key={option}
+                  onClick={() => onCaseLevelChange(option)}
+                >
+                  {option}
+                </ChoiceButton>
+              ))}
+            </div>
+          </QuestionBlock>
+        </div>
+
+        <div className="mt-7 flex flex-wrap justify-end gap-2 border-t border-border pt-5">
+          <button
+            className="rounded-sm border border-border bg-surface px-4 py-3 text-sm font-black text-secondary hover:border-primary"
+            onClick={onReset}
+            type="button"
+          >
+            清空
+          </button>
+          <button
+            className="rounded-sm border border-border bg-surface px-4 py-3 text-sm font-black text-ink hover:border-primary"
+            onClick={onClose}
+            type="button"
+          >
+            取消
+          </button>
+          <button
+            className="rounded-sm bg-primary px-5 py-3 text-sm font-black text-white"
+            onClick={onApply}
+            type="button"
+          >
+            应用筛选
+          </button>
+        </div>
       </div>
     </div>
+  );
+}
+
+function QuestionBlock({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <h3 className="text-sm font-black tracking-normal text-ink">{label}</h3>
+      <div className="mt-3">{children}</div>
+    </div>
+  );
+}
+
+function ChoiceButton({
+  active,
+  children,
+  onClick
+}: {
+  active: boolean;
+  children: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className={`min-h-11 rounded-sm border px-4 text-sm font-black transition ${
+        active
+          ? "border-primary bg-primary text-white shadow-card"
+          : "border-border bg-soft text-secondary hover:border-primary hover:text-primary"
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      {children}
+    </button>
   );
 }
 

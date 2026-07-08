@@ -356,28 +356,35 @@ function toProgramDraftData(
   };
 }
 
-function toCaseDraftForm(value: StudentCase | null | undefined): CaseDraftForm {
-  if (!value) {
+function toCaseDraftForm(value: unknown): CaseDraftForm {
+  const data = asRecord(value);
+  if (!Object.keys(data).length) {
     return emptyCaseDraftForm;
   }
+  const activities = Array.isArray(data.activityExperience)
+    ? (data.activityExperience as StudentCase["activityExperience"])
+    : [];
   return {
-    anonymousCode: value.anonymousCode,
-    grade: isCaseGrade(value.grade) ? value.grade : "G11",
-    schoolType: isSchoolType(value.schoolType) ? value.schoolType : "international",
-    gpaRange: value.gpaRange,
-    academicSummary: value.academicSummary ?? "",
-    activityExperienceText: activityExperienceToText(value.activityExperience),
-    intendedMajor: value.intendedMajor,
-    resultSummary: value.resultSummary,
-    resultTier: value.resultTier ?? "",
-    personalSummary: value.personalSummary ?? "",
-    consultantReview: value.consultantReview ?? "",
-    tagsText: value.tags.join("、"),
-    status: isProgramStatus(value.status) ? value.status : "draft"
+    anonymousCode: asString(data.anonymousCode),
+    grade: isCaseGrade(data.grade) ? data.grade : "G11",
+    schoolType: isSchoolType(data.schoolType) ? data.schoolType : "international",
+    gpaRange: asString(data.gpaRange),
+    academicSummary: asString(data.academicSummary),
+    activityExperienceText: activityExperienceToText(activities),
+    intendedMajor: asString(data.intendedMajor),
+    resultSummary: asString(data.resultSummary),
+    resultTier: asString(data.resultTier),
+    personalSummary: asString(data.personalSummary),
+    consultantReview: asString(data.consultantReview),
+    tagsText: arrayToText(data.tags),
+    status: isProgramStatus(data.status) ? data.status : "draft"
   };
 }
 
-function toCaseDraftData(form: CaseDraftForm) {
+function toCaseDraftData(
+  form: CaseDraftForm,
+  overrides: Partial<Pick<StudentCase, "status">> = {}
+) {
   return {
     anonymousCode: form.anonymousCode.trim(),
     grade: form.grade,
@@ -391,7 +398,7 @@ function toCaseDraftData(form: CaseDraftForm) {
     personalSummary: form.personalSummary.trim(),
     consultantReview: form.consultantReview.trim(),
     tags: textToArray(form.tagsText),
-    status: form.status,
+    status: overrides.status ?? form.status,
     completeness: 80
   };
 }
@@ -492,6 +499,7 @@ export function AdminImportPage() {
   const [selectedJobId, setSelectedJobId] = useState("");
   const [selectedItemId, setSelectedItemId] = useState("");
   const [draftForm, setDraftForm] = useState<ProgramDraftForm>(emptyProgramDraftForm);
+  const [caseDraftForm, setCaseDraftForm] = useState<CaseDraftForm>(emptyCaseDraftForm);
   const [savingItemId, setSavingItemId] = useState("");
   const parsedCount = jobs.reduce((total, job) => total + (job.items?.length ?? 0), 0);
   const selectedJob = useMemo(() => {
@@ -505,6 +513,7 @@ export function AdminImportPage() {
   const selectedItem = useMemo(() => {
     return selectedItems.find((item) => item.id === selectedItemId) ?? selectedItems[0];
   }, [selectedItemId, selectedItems]);
+  const selectedJobIsCase = selectedJob?.sourceType === "case" || selectedItem?.itemType === "case";
 
   useEffect(() => {
     if (!jobs.length) {
@@ -521,6 +530,7 @@ export function AdminImportPage() {
     if (!selectedItems.length) {
       setSelectedItemId("");
       setDraftForm(emptyProgramDraftForm);
+      setCaseDraftForm(emptyCaseDraftForm);
       return;
     }
     if (!selectedItemId || !selectedItems.some((item) => item.id === selectedItemId)) {
@@ -528,9 +538,13 @@ export function AdminImportPage() {
       return;
     }
     if (selectedItem) {
-      setDraftForm(toProgramDraftForm(selectedItem.parsedData));
+      if (selectedItem.itemType === "case" || selectedJob?.sourceType === "case") {
+        setCaseDraftForm(toCaseDraftForm(selectedItem.parsedData));
+      } else {
+        setDraftForm(toProgramDraftForm(selectedItem.parsedData));
+      }
     }
-  }, [selectedItem, selectedItemId, selectedItems]);
+  }, [selectedItem, selectedItemId, selectedItems, selectedJob?.sourceType]);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     setFile(event.target.files?.[0] ?? null);
@@ -565,7 +579,7 @@ export function AdminImportPage() {
   const publishJob = async (jobId: string) => {
     setActionMessage("");
     const job = jobs.find((item) => item.id === jobId);
-    if (job && hasQualityErrors(job)) {
+    if (job?.sourceType === "program" && hasQualityErrors(job)) {
       setActionMessage("存在质量检查错误，请修复后再发布。");
       return;
     }
@@ -573,7 +587,7 @@ export function AdminImportPage() {
       await apiFetch<ImportJobView>(`/api/admin/import/jobs/${jobId}/publish`, {
         method: "POST"
       });
-      setActionMessage("已发布到活动库。");
+      setActionMessage(`已发布到${job?.sourceType === "case" ? "案例库" : "活动库"}。`);
       await reload();
     } catch (actionError) {
       setActionMessage(actionError instanceof Error ? actionError.message : "操作失败");
@@ -595,8 +609,57 @@ export function AdminImportPage() {
     }));
   };
 
+  const updateCaseDraftField = <K extends keyof CaseDraftForm>(
+    field: K,
+    value: CaseDraftForm[K]
+  ) => {
+    setCaseDraftForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  };
+
   const saveSelectedItem = async () => {
     if (!selectedJob || !selectedItem) {
+      return;
+    }
+    if (selectedJobIsCase) {
+      if (!caseDraftForm.anonymousCode.trim()) {
+        setActionMessage("案例编号不能为空");
+        return;
+      }
+      if (!caseDraftForm.intendedMajor.trim()) {
+        setActionMessage("申请方向不能为空");
+        return;
+      }
+      if (!caseDraftForm.resultSummary.trim()) {
+        setActionMessage("结果摘要不能为空");
+        return;
+      }
+
+      setSavingItemId(selectedItem.id);
+      setActionMessage("");
+      try {
+        await apiFetch<ImportItemView>(
+          `/api/admin/import/jobs/${selectedJob.id}/items/${selectedItem.id}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              title: caseDraftForm.anonymousCode.trim(),
+              status: "draft",
+              parsedData: toCaseDraftData(caseDraftForm, {
+                status: "draft"
+              })
+            })
+          }
+        );
+        setActionMessage("预览项已保存。");
+        await reload();
+      } catch (saveError) {
+        setActionMessage(saveError instanceof Error ? saveError.message : "保存失败");
+      } finally {
+        setSavingItemId("");
+      }
       return;
     }
     if (!draftForm.name.trim()) {
@@ -689,7 +752,7 @@ export function AdminImportPage() {
   return (
     <div>
       <PageHeading
-        description="上传文档后由后端解析为结构化草稿，管理员可直接发布到活动库。"
+        description="上传文档后由后端解析为结构化草稿，管理员可直接发布到活动库或案例库。"
         eyebrow="Admin"
         title="文档录入"
       />
@@ -783,13 +846,13 @@ export function AdminImportPage() {
                       disabled={
                         job.status === "failed" ||
                         job.status === "published" ||
-                        job.sourceType !== "program" ||
-                        stats.errors > 0
+                        (job.sourceType !== "program" && job.sourceType !== "case") ||
+                        (job.sourceType === "program" && stats.errors > 0)
                       }
                       onClick={() => void publishJob(job.id)}
                       type="button"
                     >
-                      发布到活动库
+                      发布到{job.sourceType === "case" ? "案例库" : "活动库"}
                     </button>
                   </div>
                 </div>
@@ -803,7 +866,7 @@ export function AdminImportPage() {
           <Card>
             <h2 className="text-lg font-extrabold tracking-normal text-ink">结构化预览</h2>
             <dl className="mt-4 space-y-3">
-              <AdminStat label="已解析活动" value={`${parsedCount}`} />
+              <AdminStat label="已解析条目" value={`${parsedCount}`} />
               <AdminStat label="已发布任务" value={`${jobs.filter((job) => job.status === "published").length}`} />
               <AdminStat label="来源文档" value={jobs[0]?.fileName ?? "待上传"} />
             </dl>
@@ -867,8 +930,8 @@ export function AdminImportPage() {
                   ) : null}
                   <span className="text-sm font-bold text-secondary">{selectedItem.title}</span>
                 </div>
-                <ImportQualityPanel quality={selectedItem.quality} />
-                {selectedItem.status === "draft" &&
+                {!selectedJobIsCase ? <ImportQualityPanel quality={selectedItem.quality} /> : null}
+                {!selectedJobIsCase && selectedItem.status === "draft" &&
                 selectedItem.quality?.duplicatePrograms?.length ? (
                   <div className="rounded-sm border border-warning/25 bg-warning/10 p-4">
                     <h3 className="text-sm font-extrabold text-ink">同名活动候选</h3>
@@ -903,108 +966,11 @@ export function AdminImportPage() {
                     </div>
                   </div>
                 ) : null}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <DraftTextField
-                    label="活动名称"
-                    onChange={(value) => updateDraftField("name", value)}
-                    value={draftForm.name}
-                  />
-                  <DraftTextField
-                    label="主办方"
-                    onChange={(value) => updateDraftField("organization", value)}
-                    value={draftForm.organization}
-                  />
-                  <DraftSelectField
-                    label="活动类型"
-                    onChange={(value) => updateDraftField("type", value as Program["type"])}
-                    options={programTypeOptions}
-                    value={draftForm.type}
-                  />
-                  <DraftSelectField
-                    label="形式"
-                    onChange={(value) => updateDraftField("format", value as Program["format"])}
-                    options={programFormatOptions}
-                    value={draftForm.format}
-                  />
-                  <DraftTextField
-                    label="官网"
-                    onChange={(value) => updateDraftField("officialUrl", value)}
-                    value={draftForm.officialUrl}
-                  />
-                  <DraftTextField
-                    label="适合年级"
-                    onChange={(value) => updateDraftField("gradeRange", value)}
-                    value={draftForm.gradeRange}
-                  />
-                  <DraftTextField
-                    label="学科方向"
-                    onChange={(value) => updateDraftField("subjectArea", value)}
-                    value={draftForm.subjectArea}
-                  />
-                  <DraftTextField
-                    label="地点"
-                    onChange={(value) => updateDraftField("location", value)}
-                    value={draftForm.location}
-                  />
-                  <DraftTextField
-                    label="报名截止"
-                    onChange={(value) => updateDraftField("applicationEndDate", value)}
-                    value={draftForm.applicationEndDate}
-                  />
-                  <DraftTextField
-                    label="活动开始"
-                    onChange={(value) => updateDraftField("programStartDate", value)}
-                    value={draftForm.programStartDate}
-                  />
-                  <DraftTextField
-                    label="周期"
-                    onChange={(value) => updateDraftField("duration", value)}
-                    value={draftForm.duration}
-                  />
-                  <DraftTextField
-                    label="费用"
-                    onChange={(value) => updateDraftField("costText", value)}
-                    value={draftForm.costText}
-                  />
-                </div>
-                <DraftTextField
-                  label="活动简介"
-                  onChange={(value) => updateDraftField("description", value)}
-                  textarea
-                  value={draftForm.description}
-                />
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <DraftTextField
-                    label="核心主题"
-                    onChange={(value) => updateDraftField("coreTopicsText", value)}
-                    value={draftForm.coreTopicsText}
-                  />
-                  <DraftTextField
-                    label="特色亮点"
-                    onChange={(value) => updateDraftField("highlightsText", value)}
-                    value={draftForm.highlightsText}
-                  />
-                  <DraftTextField
-                    label="申请材料"
-                    onChange={(value) => updateDraftField("requiredMaterialsText", value)}
-                    value={draftForm.requiredMaterialsText}
-                  />
-                  <DraftTextField
-                    label="标签"
-                    onChange={(value) => updateDraftField("tagsText", value)}
-                    value={draftForm.tagsText}
-                  />
-                  <DraftTextField
-                    label="报名方式"
-                    onChange={(value) => updateDraftField("applicationMethod", value)}
-                    value={draftForm.applicationMethod}
-                  />
-                  <DraftTextField
-                    label="名额限制"
-                    onChange={(value) => updateDraftField("capacityLimit", value)}
-                    value={draftForm.capacityLimit}
-                  />
-                </div>
+                {selectedJobIsCase ? (
+                  <CaseFormFields form={caseDraftForm} onFieldChange={updateCaseDraftField} />
+                ) : (
+                  <ProgramFormFields form={draftForm} onFieldChange={updateDraftField} />
+                )}
                 {selectedItem.rawText ? (
                   <details className="rounded-sm border border-border bg-soft p-3 text-sm text-secondary">
                     <summary className="cursor-pointer font-extrabold text-ink">原文片段</summary>

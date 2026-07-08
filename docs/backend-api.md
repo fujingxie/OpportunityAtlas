@@ -169,6 +169,8 @@ q
 grade
 schoolType
 gpaRange
+curriculum
+standardizedScore
 intendedMajor
 activityType
 resultTier
@@ -182,6 +184,9 @@ sortOrder
 
 - 案例必须匿名化，不返回真实姓名、联系方式、具体学校名称。
 - `schoolType` 可取 `international`、`public`、`other`。
+- `curriculum` 用于按就读体系筛选，例如 `IB`、`A-Level`、`AP`、`OSSD`；当前通过案例 `tags`、`academicSummary`、`gpaRange` 匹配。
+- `standardizedScore` 用于按标化成绩文本筛选，例如 `42`、`4A*`、`SAT1550`；当前通过 `academicSummary` 和 `gpaRange` 文本匹配。
+- `resultTier` 在案例库问答式筛选中使用 `顶尖`、`中等`、`普通`、`失败` 四类。
 
 ### 2.5 GET /api/cases/:caseId
 
@@ -260,15 +265,16 @@ DELETE /api/admin/relations/:relationId
 - 一期支持文件类型：`docx`
 - 表单字段：
   - `file`：上传文件
-  - `sourceType`：`program | case | mixed | unknown`，前端上传时必须显式传入；当前已实现 `program` 解析
+  - `sourceType`：`program | case | mixed | unknown`，前端上传时必须显式传入；当前已实现 `program` 和 `case` 解析
 - `pdf`、`xlsx`、`csv` 暂返回 `UNSUPPORTED_FILE_TYPE`
-- `case`、`mixed`、`unknown` 暂返回 `UNSUPPORTED_SOURCE_TYPE`，待案例文档字段模板确认后扩展
+- `mixed`、`unknown` 暂返回 `UNSUPPORTED_SOURCE_TYPE`
+- `case` 文档当前支持按案例库模板解析：章节等级映射为 `顶尖`、`中等`、`普通`、`失败`，单条案例字段包括就读体系、标化成绩、语言成绩、竞赛、夏校、科研、申请地区、路径定位
 - 最大文件大小：50MB
 - 返回 `ImportJob`
 
 `GET /api/admin/import/jobs/:jobId`
 
-返回解析任务详情和结构化预览项。预览项允许前端人工校对后 patch。每个活动预览项返回 `quality`：
+返回解析任务详情和结构化预览项。预览项允许前端人工校对后 patch。每个活动预览项返回 `quality`；案例预览项当前不做活动质量检查：
 
 ```ts
 type ImportQualitySummary = {
@@ -308,8 +314,9 @@ type ImportQualitySummary = {
 
 `POST /api/admin/import/jobs/:jobId/publish`
 
-发布活动导入任务。当前仅支持 `sourceType=program`；后端只发布 `status=draft` 的活动预览项，已发布或已跳过的预览项不会重复入库。
-若任一待发布项存在 `severity=error` 的质量问题，返回 `QUALITY_CHECK_FAILED`，管理员修复或跳过问题项后再发布。`warning` 不阻止发布。
+发布导入任务。当前支持 `sourceType=program` 和 `sourceType=case`；后端只发布 `status=draft` 的预览项，已发布或已跳过的预览项不会重复入库。
+活动导入若任一待发布项存在 `severity=error` 的质量问题，返回 `QUALITY_CHECK_FAILED`，管理员修复或跳过问题项后再发布。`warning` 不阻止发布。
+案例导入发布时会创建 `StudentCase` 和对应 `CaseActivity` 记录；若案例编号重复或字段不合法，返回 `PUBLISH_FAILED`。
 
 ### 3.2 活动管理
 

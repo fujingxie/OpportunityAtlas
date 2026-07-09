@@ -4,12 +4,18 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Badge, Card, EmptyState } from "@/components/ui";
 import { apiFetch, toQueryString } from "@/lib/api-client";
-import type { Program } from "@/lib/types";
+import type { Program, Tag } from "@/lib/types";
 import { includesAny, normalizeText } from "@/lib/utils";
 
 type ActivityQuestionStep = 1 | 2 | 3;
 
 const gradeChoices = ["G9", "G10", "G11", "G12"];
+const fallbackProgramTypes = ["Competition", "Summer School", "Research Program", "Other"];
+const fallbackSubjects = ["STEM", "商科/经济", "人文社科", "艺术", "综合"];
+const fallbackGrades = ["G9", "G10", "G11", "G12"];
+const fallbackFormats = ["online", "offline", "hybrid"];
+const fallbackLocations = ["线上", "美国", "全球"];
+const costs = ["all", "free", "paid"];
 const subjectChoices = [
   { label: "STEM / 理工", value: "STEM" },
   { label: "商科 / 经济", value: "商科/经济" },
@@ -43,6 +49,18 @@ const costChoices = [
   { label: "可接受付费", value: "paid" }
 ];
 
+function optionsFromTags(tags: Tag[], group: Tag["group"], fallback: string[]) {
+  const enabledNames = tags
+    .filter((tag) => tag.group === group && tag.enabled)
+    .map((tag) => tag.name);
+  const names = enabledNames.length ? enabledNames : fallback;
+  const orderedNames = [
+    ...fallback.filter((option) => names.includes(option)),
+    ...names.filter((option) => !fallback.includes(option))
+  ];
+  return ["all", ...Array.from(new Set(orderedNames))];
+}
+
 export function ProgramDirectory({
   initialQ = "",
   initialPrograms
@@ -66,8 +84,21 @@ export function ProgramDirectory({
   const [questionStep, setQuestionStep] = useState<ActivityQuestionStep>(1);
   const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const [programData, setProgramData] = useState<Program[]>(initialPrograms ?? []);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(!initialPrograms?.length);
+  const [tagsLoading, setTagsLoading] = useState(true);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    apiFetch<Tag[]>("/api/tags")
+      .then((response) => {
+        setTags(response.data);
+      })
+      .catch(() => {
+        setTags([]);
+      })
+      .finally(() => setTagsLoading(false));
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -130,6 +161,17 @@ export function ProgramDirectory({
     setCostType(draftCostType);
     setQuestionnaireOpen(false);
   };
+
+  const filterOptions = useMemo(
+    () => ({
+      programTypes: optionsFromTags(tags, "program_type", fallbackProgramTypes),
+      subjects: optionsFromTags(tags, "subject", fallbackSubjects),
+      grades: optionsFromTags(tags, "grade", fallbackGrades),
+      formats: optionsFromTags(tags, "format", fallbackFormats),
+      locations: optionsFromTags(tags, "location", fallbackLocations)
+    }),
+    [tags]
+  );
 
   const programs = useMemo(
     () =>
@@ -209,6 +251,50 @@ export function ProgramDirectory({
         >
           清空筛选
         </button>
+        <div className="mt-7 border-t border-border pt-7">
+          <h2 className="text-base font-black tracking-normal text-ink">筛选条件</h2>
+          <div className="mt-6 space-y-7">
+            <FilterGroup
+              label="活动分类"
+              onChange={setType}
+              options={filterOptions.programTypes}
+              value={type}
+            />
+            <FilterGroup
+              label="学科方向"
+              onChange={setSubject}
+              options={filterOptions.subjects}
+              value={subject}
+            />
+            <FilterGroup
+              label="适合年级"
+              onChange={setGrade}
+              options={filterOptions.grades}
+              value={grade}
+            />
+            <FilterGroup
+              label="形式"
+              onChange={setFormat}
+              options={filterOptions.formats}
+              value={format}
+            />
+            <FilterGroup
+              label="地点"
+              onChange={setLocation}
+              options={filterOptions.locations}
+              value={location}
+            />
+            <FilterGroup
+              label="费用"
+              onChange={setCostType}
+              options={costs}
+              value={costType}
+            />
+          </div>
+          {tagsLoading ? (
+            <p className="mt-6 text-xs font-bold leading-6 text-muted">正在加载标签配置...</p>
+          ) : null}
+        </div>
       </aside>
 
       <section className="scroll-pane bg-soft p-5 lg:h-full lg:overflow-y-auto lg:p-8">
@@ -295,6 +381,49 @@ function FilterSummary({ label, value }: { label: string; value: string }) {
     <div className="rounded-sm border border-border bg-soft px-4 py-3">
       <p className="text-xs font-black uppercase tracking-[0.14em] text-muted">{label}</p>
       <p className="mt-1 text-sm font-black text-ink">{value}</p>
+    </div>
+  );
+}
+
+function FilterGroup({
+  label,
+  options,
+  value,
+  onChange
+}: {
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
+      <h3 className="text-sm font-black tracking-normal text-ink">{label}</h3>
+      <div className="mt-3 space-y-2">
+        {options.map((option) => {
+          const active = value === option;
+
+          return (
+            <button
+              className="flex min-h-9 w-full items-center justify-between rounded-sm px-1 text-left text-sm font-black text-secondary hover:text-primary"
+              key={option}
+              onClick={() => onChange(option)}
+              type="button"
+            >
+              <span>{programFilterOptionLabel(option)}</span>
+              <span
+                className={`grid h-5 w-5 place-items-center rounded-[6px] border text-[11px] ${
+                  active
+                    ? "border-primary bg-primary text-white"
+                    : "border-border bg-surface text-transparent"
+                }`}
+              >
+                ✓
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -573,6 +702,23 @@ function choiceLabel(
   value: string
 ) {
   return choices.find((choice) => choice.value === value)?.label ?? "未选择";
+}
+
+function programFilterOptionLabel(option: string) {
+  const labels: Record<string, string> = {
+    all: "全部",
+    online: "线上",
+    offline: "线下",
+    hybrid: "混合",
+    free: "免费 / 全额资助",
+    paid: "付费项目",
+    Competition: "竞赛",
+    "Summer School": "夏校",
+    "Research Program": "科研项目",
+    Other: "其他"
+  };
+
+  return labels[option] ?? option;
 }
 
 function ProgramCardItem({ program }: { program: Program }) {

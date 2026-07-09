@@ -171,6 +171,11 @@ schoolType
 gpaRange
 curriculum
 standardizedScore
+languageScore
+competition
+summerSchool
+research
+applicationRegion
 intendedMajor
 activityType
 resultTier
@@ -186,6 +191,9 @@ sortOrder
 - `schoolType` 可取 `international`、`public`、`other`。
 - `curriculum` 用于按就读体系筛选，例如 `IB`、`A-Level`、`AP`、`OSSD`；当前通过案例 `tags`、`academicSummary`、`gpaRange` 匹配。
 - `standardizedScore` 用于按标化成绩文本筛选，例如 `42`、`4A*`、`SAT1550`；当前通过 `academicSummary` 和 `gpaRange` 文本匹配。
+- `languageScore` 用于按语言成绩文本筛选，例如 `雅思7.5`、`托福105`。
+- `competition`、`summerSchool`、`research` 分别匹配案例活动经历中的竞赛、夏校、科研文本。
+- `applicationRegion` 用于按申请地区筛选，一期前端提供 `英国`、`美国`、`香港`、`澳大利亚` 四个单选项；后端兼容 `中国香港`、`澳洲` 等常见写法。
 - `resultTier` 在案例库问答式筛选中使用 `顶尖`、`中等`、`普通`、`失败` 四类。
 
 ### 2.5 GET /api/cases/:caseId

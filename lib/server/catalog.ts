@@ -21,6 +21,11 @@ export type CaseQuery = {
   gpaRange?: string;
   curriculum?: string;
   standardizedScore?: string;
+  languageScore?: string;
+  competition?: string;
+  summerSchool?: string;
+  research?: string;
+  applicationRegion?: string;
   intendedMajor?: string;
   activityType?: string;
   resultTier?: string;
@@ -87,19 +92,51 @@ function filterProgram(program: Program, query: ProgramQuery) {
   return true;
 }
 
+function buildCaseSearchText(studentCase: StudentCase) {
+  return [
+    studentCase.anonymousCode,
+    studentCase.gpaRange,
+    studentCase.academicSummary,
+    studentCase.intendedMajor,
+    studentCase.resultSummary,
+    studentCase.personalSummary,
+    studentCase.consultantReview,
+    ...studentCase.tags,
+    ...studentCase.activityExperience.flatMap((activity) => [
+      activity.programName,
+      activity.description ?? ""
+    ])
+  ].join(" ");
+}
+
+function matchesCaseActivity(studentCase: StudentCase, type: string, value: string) {
+  const normalizedValue = normalizeText(value);
+  return studentCase.activityExperience.some((activity) => {
+    if (activity.type !== type) {
+      return false;
+    }
+    return normalizeText([activity.programName, activity.description].join(" ")).includes(
+      normalizedValue
+    );
+  });
+}
+
+function matchesCaseRegion(studentCase: StudentCase, value: string) {
+  const aliases: Record<string, string[]> = {
+    英国: ["英国", "UK", "United Kingdom"],
+    美国: ["美国", "US", "USA", "United States"],
+    香港: ["香港", "中国香港", "Hong Kong"],
+    澳大利亚: ["澳大利亚", "澳洲", "Australia"]
+  };
+  const searchable = normalizeText(buildCaseSearchText(studentCase));
+  return (aliases[value] ?? [value]).some((alias) => searchable.includes(normalizeText(alias)));
+}
+
 function filterCase(studentCase: StudentCase, query: CaseQuery) {
   const q = normalizeText(query.q);
+  const searchableProfile = buildCaseSearchText(studentCase);
   if (q) {
-    const haystack = [
-      studentCase.anonymousCode,
-      studentCase.academicSummary,
-      studentCase.intendedMajor,
-      studentCase.resultSummary,
-      studentCase.personalSummary,
-      ...studentCase.tags,
-      ...studentCase.activityExperience.map((activity) => activity.programName)
-    ].join(" ");
-    if (!normalizeText(haystack).includes(q)) {
+    if (!normalizeText(searchableProfile).includes(q)) {
       return false;
     }
   }
@@ -132,10 +169,36 @@ function filterCase(studentCase: StudentCase, query: CaseQuery) {
 
   if (
     query.standardizedScore &&
-    !normalizeText([studentCase.gpaRange, studentCase.academicSummary].join(" ")).includes(
+    !normalizeText(searchableProfile).includes(
       normalizeText(query.standardizedScore)
     )
   ) {
+    return false;
+  }
+
+  if (
+    query.languageScore &&
+    !normalizeText(searchableProfile).includes(normalizeText(query.languageScore))
+  ) {
+    return false;
+  }
+
+  if (query.competition && !matchesCaseActivity(studentCase, "Competition", query.competition)) {
+    return false;
+  }
+
+  if (
+    query.summerSchool &&
+    !matchesCaseActivity(studentCase, "Summer School", query.summerSchool)
+  ) {
+    return false;
+  }
+
+  if (query.research && !matchesCaseActivity(studentCase, "Research Program", query.research)) {
+    return false;
+  }
+
+  if (query.applicationRegion && !matchesCaseRegion(studentCase, query.applicationRegion)) {
     return false;
   }
 

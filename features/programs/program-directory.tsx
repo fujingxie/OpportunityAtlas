@@ -1,30 +1,47 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Badge, Card, EmptyState } from "@/components/ui";
 import { apiFetch, toQueryString } from "@/lib/api-client";
-import type { Program, Tag } from "@/lib/types";
+import type { Program } from "@/lib/types";
 import { includesAny, normalizeText } from "@/lib/utils";
 
-const fallbackProgramTypes = ["Competition", "Summer School", "Research Program", "Other"];
-const fallbackSubjects = ["STEM", "商科/经济", "人文社科", "艺术", "综合"];
-const fallbackGrades = ["G9", "G10", "G11", "G12"];
-const fallbackFormats = ["online", "offline", "hybrid"];
-const fallbackLocations = ["线上", "美国", "全球"];
-const costs = ["all", "free", "paid"];
+type ActivityQuestionStep = 1 | 2 | 3;
 
-function optionsFromTags(tags: Tag[], group: Tag["group"], fallback: string[]) {
-  const enabledNames = tags
-    .filter((tag) => tag.group === group && tag.enabled)
-    .map((tag) => tag.name);
-  const names = enabledNames.length ? enabledNames : fallback;
-  const orderedNames = [
-    ...fallback.filter((option) => names.includes(option)),
-    ...names.filter((option) => !fallback.includes(option))
-  ];
-  return ["all", ...Array.from(new Set(orderedNames))];
-}
+const gradeChoices = ["G9", "G10", "G11", "G12"];
+const subjectChoices = [
+  { label: "STEM / 理工", value: "STEM" },
+  { label: "商科 / 经济", value: "商科/经济" },
+  { label: "人文社科", value: "人文社科" },
+  { label: "艺术 / 传媒", value: "艺术" },
+  { label: "还不确定", value: "综合" }
+];
+const experienceChoices = [
+  { label: "竞赛证明", value: "Competition", description: "用成绩证明学科能力" },
+  { label: "夏校探索", value: "Summer School", description: "确认方向并获得课堂体验" },
+  { label: "科研产出", value: "Research Program", description: "形成论文、展示或研究叙事" },
+  { label: "先看综合", value: "all", description: "暂时不限定活动类型" }
+];
+const formatChoices = [
+  { label: "不限形式", value: "all" },
+  { label: "线上", value: "online" },
+  { label: "线下", value: "offline" },
+  { label: "混合", value: "hybrid" }
+];
+const locationChoices = [
+  { label: "不限地区", value: "all" },
+  { label: "线上", value: "线上" },
+  { label: "美国", value: "美国" },
+  { label: "英国", value: "英国" },
+  { label: "香港", value: "香港" },
+  { label: "全球", value: "全球" }
+];
+const costChoices = [
+  { label: "不限费用", value: "all" },
+  { label: "优先免费", value: "free" },
+  { label: "可接受付费", value: "paid" }
+];
 
 export function ProgramDirectory({
   initialQ = "",
@@ -40,22 +57,17 @@ export function ProgramDirectory({
   const [format, setFormat] = useState("all");
   const [location, setLocation] = useState("all");
   const [costType, setCostType] = useState("all");
+  const [draftType, setDraftType] = useState("all");
+  const [draftSubject, setDraftSubject] = useState("all");
+  const [draftGrade, setDraftGrade] = useState("all");
+  const [draftFormat, setDraftFormat] = useState("all");
+  const [draftLocation, setDraftLocation] = useState("all");
+  const [draftCostType, setDraftCostType] = useState("all");
+  const [questionStep, setQuestionStep] = useState<ActivityQuestionStep>(1);
+  const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   const [programData, setProgramData] = useState<Program[]>(initialPrograms ?? []);
-  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(!initialPrograms?.length);
-  const [tagsLoading, setTagsLoading] = useState(true);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    apiFetch<Tag[]>("/api/tags")
-      .then((response) => {
-        setTags(response.data);
-      })
-      .catch(() => {
-        setTags([]);
-      })
-      .finally(() => setTagsLoading(false));
-  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -81,16 +93,43 @@ export function ProgramDirectory({
       .finally(() => setLoading(false));
   }, [costType, format, grade, location, q, subject, type]);
 
-  const filterOptions = useMemo(
-    () => ({
-      programTypes: optionsFromTags(tags, "program_type", fallbackProgramTypes),
-      subjects: optionsFromTags(tags, "subject", fallbackSubjects),
-      grades: optionsFromTags(tags, "grade", fallbackGrades),
-      formats: optionsFromTags(tags, "format", fallbackFormats),
-      locations: optionsFromTags(tags, "location", fallbackLocations)
-    }),
-    [tags]
-  );
+  const openQuestionnaire = () => {
+    setDraftType(type);
+    setDraftSubject(subject);
+    setDraftGrade(grade);
+    setDraftFormat(format);
+    setDraftLocation(location);
+    setDraftCostType(costType);
+    setQuestionStep(1);
+    setQuestionnaireOpen(true);
+  };
+
+  const resetFilters = () => {
+    setQ("");
+    setType("all");
+    setSubject("all");
+    setGrade("all");
+    setFormat("all");
+    setLocation("all");
+    setCostType("all");
+    setDraftType("all");
+    setDraftSubject("all");
+    setDraftGrade("all");
+    setDraftFormat("all");
+    setDraftLocation("all");
+    setDraftCostType("all");
+    setQuestionStep(1);
+  };
+
+  const applyQuestionnaire = () => {
+    setType(draftType);
+    setSubject(draftSubject);
+    setGrade(draftGrade);
+    setFormat(draftFormat);
+    setLocation(draftLocation);
+    setCostType(draftCostType);
+    setQuestionnaireOpen(false);
+  };
 
   const programs = useMemo(
     () =>
@@ -144,18 +183,32 @@ export function ProgramDirectory({
   return (
     <div className="grid gap-0 overflow-hidden rounded-[34px] border border-border bg-surface shadow-panel lg:h-[calc(100vh-124px)] lg:grid-cols-[300px_1fr]">
       <aside className="scroll-pane border-b border-border bg-surface p-7 lg:h-full lg:overflow-y-auto lg:border-b-0 lg:border-r">
-        <h2 className="text-base font-black tracking-normal text-ink">筛选条件</h2>
-        <div className="mt-6 space-y-7">
-          <FilterGroup label="活动分类" onChange={setType} options={filterOptions.programTypes} value={type} />
-          <FilterGroup label="学科方向" onChange={setSubject} options={filterOptions.subjects} value={subject} />
-          <FilterGroup label="适合年级" onChange={setGrade} options={filterOptions.grades} value={grade} />
-          <FilterGroup label="形式" onChange={setFormat} options={filterOptions.formats} value={format} />
-          <FilterGroup label="地点" onChange={setLocation} options={filterOptions.locations} value={location} />
-          <FilterGroup label="费用" onChange={setCostType} options={costs} value={costType} />
+        <h2 className="text-base font-black tracking-normal text-ink">活动探索</h2>
+        <p className="mt-3 text-sm font-bold leading-7 text-secondary">
+          不确定适合什么活动时，先回答年级、目标和执行约束，系统会筛出更接近的活动。
+        </p>
+        <button
+          className="mt-6 min-h-11 w-full rounded-sm bg-primary px-4 text-sm font-black text-white shadow-card"
+          onClick={openQuestionnaire}
+          type="button"
+        >
+          开始活动问卷
+        </button>
+        <div className="mt-6 space-y-3">
+          <FilterSummary label="当前年级" value={grade === "all" ? "未选择" : grade} />
+          <FilterSummary label="申请方向" value={choiceLabel(subjectChoices, subject)} />
+          <FilterSummary label="经历目标" value={choiceLabel(experienceChoices, type)} />
+          <FilterSummary label="形式 / 地点" value={`${choiceLabel(formatChoices, format)} / ${choiceLabel(locationChoices, location)}`} />
+          <FilterSummary label="费用" value={choiceLabel(costChoices, costType)} />
+          {q ? <FilterSummary label="关键词" value={q} /> : null}
         </div>
-        {tagsLoading ? (
-          <p className="mt-6 text-xs font-bold leading-6 text-muted">正在加载标签配置...</p>
-        ) : null}
+        <button
+          className="mt-5 min-h-10 w-full rounded-sm border border-border bg-surface px-4 text-sm font-black text-primary hover:border-primary"
+          onClick={resetFilters}
+          type="button"
+        >
+          清空筛选
+        </button>
       </aside>
 
       <section className="scroll-pane bg-soft p-5 lg:h-full lg:overflow-y-auto lg:p-8">
@@ -169,16 +222,13 @@ export function ProgramDirectory({
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <label className="flex min-h-12 items-center gap-2 rounded-sm border border-border bg-surface px-4 text-sm font-black text-secondary shadow-card">
-              <span>⌕</span>
-              <input
-                className="w-[220px] border-0 bg-transparent text-sm font-bold text-ink outline-none placeholder:text-muted"
-                id="program-search"
-                onChange={(event) => setQ(event.target.value)}
-                placeholder="STEM / Research / Summer"
-                value={q}
-              />
-            </label>
+            <button
+              className="min-h-12 rounded-sm border border-border bg-surface px-5 text-sm font-black text-primary shadow-card hover:border-primary"
+              onClick={openQuestionnaire}
+              type="button"
+            >
+              按问题筛选活动
+            </button>
             <div className="flex min-h-12 items-center rounded-sm border border-border bg-surface px-4 text-sm font-black text-secondary shadow-card">
               排序：相关案例 ↓
             </div>
@@ -199,7 +249,7 @@ export function ProgramDirectory({
               </div>
             ) : (
               <EmptyState
-                description="当前筛选条件没有结果，可以放宽年级、形式或费用条件。"
+                description="当前筛选条件没有结果，可以放宽年级、方向、形式或费用条件。"
                 title="暂无活动结果"
               />
             )}
@@ -207,50 +257,322 @@ export function ProgramDirectory({
           <RelatedCasePanel />
         </div>
       </section>
+      {questionnaireOpen ? (
+        <ProgramQuestionnaireModal
+          costType={draftCostType}
+          format={draftFormat}
+          grade={draftGrade}
+          location={draftLocation}
+          onApply={applyQuestionnaire}
+          onClose={() => setQuestionnaireOpen(false)}
+          onCostTypeChange={setDraftCostType}
+          onFormatChange={setDraftFormat}
+          onGradeChange={setDraftGrade}
+          onLocationChange={setDraftLocation}
+          onReset={() => {
+            setDraftType("all");
+            setDraftSubject("all");
+            setDraftGrade("all");
+            setDraftFormat("all");
+            setDraftLocation("all");
+            setDraftCostType("all");
+            setQuestionStep(1);
+          }}
+          onStepChange={setQuestionStep}
+          onSubjectChange={setDraftSubject}
+          onTypeChange={setDraftType}
+          step={questionStep}
+          subject={draftSubject}
+          type={draftType}
+        />
+      ) : null}
     </div>
   );
 }
 
-function FilterGroup({
-  label,
-  options,
-  value,
-  onChange
-}: {
-  label: string;
-  options: string[];
-  value: string;
-  onChange: (value: string) => void;
-}) {
+function FilterSummary({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border-b border-border pb-6 last:border-b-0 last:pb-0">
-      <h3 className="text-sm font-black tracking-normal text-ink">{label}</h3>
-      <div className="mt-3 space-y-2">
-        {options.map((option) => {
-          const active = value === option;
-          return (
+    <div className="rounded-sm border border-border bg-soft px-4 py-3">
+      <p className="text-xs font-black uppercase tracking-[0.14em] text-muted">{label}</p>
+      <p className="mt-1 text-sm font-black text-ink">{value}</p>
+    </div>
+  );
+}
+
+function ProgramQuestionnaireModal({
+  step,
+  grade,
+  subject,
+  type,
+  format,
+  location,
+  costType,
+  onStepChange,
+  onGradeChange,
+  onSubjectChange,
+  onTypeChange,
+  onFormatChange,
+  onLocationChange,
+  onCostTypeChange,
+  onReset,
+  onApply,
+  onClose
+}: {
+  step: ActivityQuestionStep;
+  grade: string;
+  subject: string;
+  type: string;
+  format: string;
+  location: string;
+  costType: string;
+  onStepChange: (value: ActivityQuestionStep) => void;
+  onGradeChange: (value: string) => void;
+  onSubjectChange: (value: string) => void;
+  onTypeChange: (value: string) => void;
+  onFormatChange: (value: string) => void;
+  onLocationChange: (value: string) => void;
+  onCostTypeChange: (value: string) => void;
+  onReset: () => void;
+  onApply: () => void;
+  onClose: () => void;
+}) {
+  const canGoNext = step === 1 ? grade !== "all" : true;
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/45 p-4">
+      <div className="max-h-[calc(100vh-32px)] w-full max-w-[760px] overflow-auto rounded-[28px] border border-border bg-surface p-6 shadow-panel">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">
+              Step {step} / 3
+            </p>
+            <h2 className="mt-2 text-2xl font-black tracking-normal text-ink">活动探索问卷</h2>
+            <p className="mt-2 text-sm font-bold leading-7 text-secondary">
+              先描述你的阶段和目标，再筛选适合现在投入的活动。
+            </p>
+          </div>
+          <button
+            className="grid h-10 w-10 place-items-center rounded-sm border border-border bg-surface text-lg font-black text-secondary hover:border-primary hover:text-primary"
+            onClick={onClose}
+            type="button"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="mt-5 grid grid-cols-3 gap-2">
+          {[1, 2, 3].map((item) => (
+            <div
+              className={`h-1.5 rounded-full ${item <= step ? "bg-primary" : "bg-soft"}`}
+              key={item}
+            />
+          ))}
+        </div>
+
+        <div className="mt-6">
+          {step === 1 ? (
+            <QuestionBlock
+              description="年级决定活动窗口期：G9-G10 更适合探索和打基础，G11-G12 更适合选择能沉淀结果的项目。"
+              label="你目前读几年级？"
+            >
+              <div className="grid gap-2 sm:grid-cols-4">
+                {gradeChoices.map((option) => (
+                  <ChoiceButton
+                    active={grade === option}
+                    key={option}
+                    onClick={() => {
+                      onGradeChange(option);
+                      onStepChange(2);
+                    }}
+                  >
+                    {option}
+                  </ChoiceButton>
+                ))}
+              </div>
+            </QuestionBlock>
+          ) : null}
+
+          {step === 2 ? (
+            <div className="space-y-6">
+              <QuestionBlock
+                description="如果还不确定方向，先选“还不确定”，系统会保留综合类活动。"
+                label="你更想申请或探索哪个方向？"
+              >
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {subjectChoices.map((option) => (
+                    <ChoiceButton
+                      active={subject === option.value}
+                      key={option.value}
+                      onClick={() => onSubjectChange(option.value)}
+                    >
+                      {option.label}
+                    </ChoiceButton>
+                  ))}
+                </div>
+              </QuestionBlock>
+
+              <QuestionBlock
+                description="这里不是让你先懂活动分类，而是判断当前履历最缺哪种证据。"
+                label="你现在最需要哪类经历？"
+              >
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {experienceChoices.map((option) => (
+                    <ChoiceButton
+                      active={type === option.value}
+                      description={option.description}
+                      key={option.value}
+                      onClick={() => onTypeChange(option.value)}
+                    >
+                      {option.label}
+                    </ChoiceButton>
+                  ))}
+                </div>
+              </QuestionBlock>
+            </div>
+          ) : null}
+
+          {step === 3 ? (
+            <div className="space-y-6">
+              <QuestionBlock label="你希望活动以什么形式进行？">
+                <div className="grid gap-2 sm:grid-cols-4">
+                  {formatChoices.map((option) => (
+                    <ChoiceButton
+                      active={format === option.value}
+                      key={option.value}
+                      onClick={() => onFormatChange(option.value)}
+                    >
+                      {option.label}
+                    </ChoiceButton>
+                  ))}
+                </div>
+              </QuestionBlock>
+
+              <QuestionBlock label="你能接受的地点或地区？">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {locationChoices.map((option) => (
+                    <ChoiceButton
+                      active={location === option.value}
+                      key={option.value}
+                      onClick={() => onLocationChange(option.value)}
+                    >
+                      {option.label}
+                    </ChoiceButton>
+                  ))}
+                </div>
+              </QuestionBlock>
+
+              <QuestionBlock label="费用偏好是什么？">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {costChoices.map((option) => (
+                    <ChoiceButton
+                      active={costType === option.value}
+                      key={option.value}
+                      onClick={() => onCostTypeChange(option.value)}
+                    >
+                      {option.label}
+                    </ChoiceButton>
+                  ))}
+                </div>
+              </QuestionBlock>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-7 flex flex-wrap justify-end gap-2 border-t border-border pt-5">
+          <button
+            className="rounded-sm border border-border bg-surface px-4 py-3 text-sm font-black text-secondary hover:border-primary"
+            onClick={onReset}
+            type="button"
+          >
+            清空
+          </button>
+          <button
+            className="rounded-sm border border-border bg-surface px-4 py-3 text-sm font-black text-ink hover:border-primary"
+            onClick={step === 1 ? onClose : () => onStepChange((step - 1) as ActivityQuestionStep)}
+            type="button"
+          >
+            {step === 1 ? "取消" : "上一步"}
+          </button>
+          {step < 3 ? (
             <button
-              className="flex min-h-9 w-full items-center justify-between rounded-sm px-1 text-left text-sm font-black text-secondary hover:text-primary"
-              key={option}
-              onClick={() => onChange(option)}
+              className="rounded-sm bg-primary px-5 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!canGoNext}
+              onClick={() => onStepChange((step + 1) as ActivityQuestionStep)}
               type="button"
             >
-              <span>{option === "all" ? "全部" : option}</span>
-              <span
-                className={`grid h-5 w-5 place-items-center rounded-[6px] border text-[11px] ${
-                  active
-                    ? "border-primary bg-primary text-white"
-                    : "border-border bg-surface text-transparent"
-                }`}
-              >
-                ✓
-              </span>
+              下一步
             </button>
-          );
-        })}
+          ) : (
+            <button
+              className="rounded-sm bg-primary px-5 py-3 text-sm font-black text-white"
+              onClick={onApply}
+              type="button"
+            >
+              应用筛选
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
+}
+
+function QuestionBlock({
+  label,
+  description,
+  children
+}: {
+  label: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <h3 className="text-sm font-black tracking-normal text-ink">{label}</h3>
+      {description ? (
+        <p className="mt-2 text-sm font-bold leading-6 text-secondary">{description}</p>
+      ) : null}
+      <div className="mt-3">{children}</div>
+    </div>
+  );
+}
+
+function ChoiceButton({
+  active,
+  children,
+  description,
+  onClick
+}: {
+  active: boolean;
+  children: ReactNode;
+  description?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className={`min-h-11 rounded-sm border px-4 py-3 text-left text-sm font-black transition ${
+        active
+          ? "border-primary bg-primary text-white shadow-card"
+          : "border-border bg-soft text-secondary hover:border-primary hover:text-primary"
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      <span className="block">{children}</span>
+      {description ? (
+        <span className={`mt-1 block text-xs font-bold ${active ? "text-white/80" : "text-muted"}`}>
+          {description}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+function choiceLabel(
+  choices: Array<{ label: string; value: string }>,
+  value: string
+) {
+  return choices.find((choice) => choice.value === value)?.label ?? "未选择";
 }
 
 function ProgramCardItem({ program }: { program: Program }) {

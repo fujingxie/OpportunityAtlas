@@ -18,8 +18,8 @@ function cleanFileName(fileName: string) {
   return fileName.replace(/[^a-zA-Z0-9._\-\u4e00-\u9fa5]/g, "_");
 }
 
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function normalizeFieldLabel(value: string) {
+  return value.replace(/\s+/g, "").toLowerCase();
 }
 
 function cleanLine(line: string) {
@@ -37,17 +37,23 @@ function extractField(block: string, labels: string[]) {
     .split("\n")
     .map(cleanLine)
     .filter(Boolean);
+  const normalizedLabels = labels.map(normalizeFieldLabel);
 
-  for (const label of labels) {
-    const labelPattern = escapeRegExp(label);
-    for (const line of lines) {
-      const match = line.match(new RegExp(`^${labelPattern}\\s*[:：]\\s*(.+)$`, "i"));
-      if (match?.[1]) {
-        return match[1].trim();
-      }
+  for (const line of lines) {
+    const match = line.match(/^(.+?)\s*[:：]\s*(.+)$/);
+    if (!match?.[1] || !match[2]) {
+      continue;
+    }
+    if (normalizedLabels.includes(normalizeFieldLabel(match[1]))) {
+      return match[2].trim();
     }
   }
   return undefined;
+}
+
+function isProgramBlockHeading(line: string) {
+  const cleaned = line.replace(/^#{1,6}\s*/, "").trim();
+  return /^(?:新增\s*)?\d+[.、)]\s+/.test(cleaned);
 }
 
 function splitList(value: string | undefined) {
@@ -97,6 +103,7 @@ function getHeadingTitle(block: string) {
   }
 
   const cleaned = cleanLine(firstLine)
+    .replace(/^新增\s*\d+[.、)]\s*/, "")
     .replace(/^\d+[.、)]\s*/, "")
     .replace(/(?:基本信息|时间信息|学生条件|地理&形式|成本信息|内容与亮点|报名信息)$/u, "")
     .trim();
@@ -402,7 +409,7 @@ export function parseProgramsFromText(text: string) {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    const isProgramHeading = /^#{2,6}\s*\d+[.、)]\s+/.test(trimmed);
+    const isProgramHeading = isProgramBlockHeading(trimmed);
     const isSectionHeading = /^#{1,6}\s*[一二三四五六七八九十]+[、.)]\s*/.test(trimmed);
     if (isProgramHeading && current.length) {
       blocks.push(current.join("\n").trim());

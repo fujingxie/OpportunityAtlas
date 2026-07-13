@@ -57,6 +57,81 @@ describe("DOCX import parser", () => {
     expect(items[21].title).not.toContain("基本信息");
   });
 
+  it("extracts program drafts from documents with 新增 numbered headings and spaced labels", () => {
+    const items = parseProgramsFromText(`
+新增 1. AMC 8 美国初中数学竞赛
+
+基本信息
+
+活动名称：AMC 8 (American Mathematics Competition 8)
+主办方 / 组织机构：美国数学协会 MAA
+活动类型：竞赛
+活动网址 / 官网链接：https://maa.org/amc
+
+时间信息
+
+报名开始日期：通常每年 9-10 月
+报名截止日期：通常次年 1 月初
+活动开始日期：每年 1 月下旬
+活动结束日期：每年 1 月下旬
+持续时间：40 分钟
+
+学生条件
+
+适合年级：G8 及以下，年龄≤14.5 岁
+学科 / 方向：理科 - 数学
+成绩 / GPA 要求：无硬性要求
+其他申请条件：通过授权学校 / 合作考点报名，不可个人直报
+
+地理 & 形式
+
+地点：全球各授权考点
+活动形式：线下纸笔
+
+成本信息
+
+报名费 / 学费：约 120 元人民币
+住宿 / 交通费用：学生自理
+奖学金 / 资助机会：无
+
+内容与亮点
+
+活动简介：全球普及度最高的初中数学竞赛。
+核心课程 / 主题：算术、代数、平面几何
+特色亮点：门槛友好、全球统一试卷
+
+报名信息
+
+报名方式：授权学校、官方合作考点统一报名
+提交材料：学生学籍信息、报名费缴费凭证
+名额限制：无统一名额限制，以考点考位为准
+
+新增 2. AMC 10 美国高中数学竞赛
+
+基本信息
+
+活动名称：AMC 10 (American Mathematics Competition 10)
+主办方 / 组织机构：美国数学协会 MAA
+活动类型：竞赛
+活动网址 / 官网链接：https://maa.org/amc
+`);
+
+    expect(items).toHaveLength(2);
+    expect(items[0].title).toBe("AMC 8 (American Mathematics Competition 8)");
+    expect(items[0].parsedData).toMatchObject({
+      organization: "美国数学协会 MAA",
+      officialUrl: "https://maa.org/amc",
+      gradeRange: "G8 及以下，年龄≤14.5 岁",
+      subjectArea: "理科 - 数学",
+      location: "全球各授权考点",
+      costText: "约 120 元人民币；学生自理",
+      applicationEndDate: "通常次年 1 月初",
+      programStartDate: "每年 1 月下旬",
+      applicationMethod: "授权学校、官方合作考点统一报名"
+    });
+    expect(items[0].parsedData.completeness).toBeGreaterThanOrEqual(90);
+  });
+
   it("extracts case drafts from grouped case library text", () => {
     const items = parseCasesFromText(`
 ## 一、顶尖冲刺路径（1–10，Top5%，难度⭐⭐⭐⭐⭐）

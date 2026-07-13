@@ -30,7 +30,7 @@
 5. **权限守卫**：通过 `components/admin-guard.tsx` 实现基本的管理员路由保护
 6. **首页设计方向**：首页采用居中品牌叙事、搜索框、热门标签和两个视觉入口卡片（活动库 / 案例库），保留一屏式桌面构图，不再使用左右仪表盘式首页。
 7. **真实后端接入方向**：后端与前端同仓库，使用 `app/api/**/route.ts` 实现接口；数据库模型位于 `prisma/schema.prisma`，本地 seed 复用已有 mock 活动和案例数据。
-8. **文档导入分流**：管理端上传接口 `POST /api/admin/import/jobs` 使用 `sourceType=program|case|mixed|unknown` 区分文档类型；活动文档解析为 `Program` 草稿，案例库模板解析为 `StudentCase + CaseActivity` 草稿，`mixed/unknown` 暂不支持。
+8. **文档导入分流**：管理端上传接口 `POST /api/admin/import/jobs` 使用 `sourceType=program|case|mixed|unknown` 区分文档类型；活动文档解析为 `Program` 草稿，兼容 Markdown 编号标题和 `新增 N.` 活动标题，也允许字段标签中 `/` 两侧存在空格；案例库模板解析为 `StudentCase + CaseActivity` 草稿，`mixed/unknown` 暂不支持。
 9. **筛选设计**：公开接口 `GET /api/tags` 只返回启用标签；活动库保留左侧传统筛选栏，并在侧栏顶部提供活动探索问卷辅助填充年级、申请方向、经历目标、形式、地点和费用条件；案例库为分步问答式筛选，按就读体系、标化成绩、语言成绩、竞赛、夏校、科研、申请地区和案例等级过滤。
 10. **活动-案例关联管理**：后台提供 `/admin/relations` 维护活动与匿名案例的显式关系；管理接口 `GET/POST/DELETE /api/admin/relations` 受 admin session 保护，前台活动详情和案例详情都会展示这些关联。
 11. **导入质量检测**：活动 DOCX 导入预览项会实时返回 `quality`，检查缺字段、官网格式、同任务重复和活动库同名；发布接口遇到 error 会返回 `QUALITY_CHECK_FAILED`，warning 允许发布。

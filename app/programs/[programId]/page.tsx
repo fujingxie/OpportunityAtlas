@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Badge, Card, EmptyState, PageShell, TextLink } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
 import type { Program, StudentCase } from "@/lib/types";
@@ -87,7 +87,21 @@ export default function ProgramDetailPage({
             <InfoCard
               items={[
                 ["主办方", program.organization],
-                ["官网", program.officialUrl ?? "待补充"],
+                [
+                  "官网",
+                  program.officialUrl ? (
+                    <a
+                      className="text-primary underline-offset-4 hover:underline"
+                      href={program.officialUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {program.officialUrl}
+                    </a>
+                  ) : (
+                    "待补充"
+                  )
+                ],
                 ["持续时间", program.duration ?? "待补充"]
               ]}
               title="基本信息"
@@ -180,7 +194,7 @@ function InfoCard({
   items
 }: {
   title: string;
-  items: Array<[string, string]>;
+  items: Array<[string, ReactNode]>;
 }) {
   return (
     <Card className="rounded-[26px] p-6">

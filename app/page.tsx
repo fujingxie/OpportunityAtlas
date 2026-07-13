@@ -13,7 +13,7 @@ const entryCards = [
   },
   {
     href: "/cases",
-    eyebrow: "12 个案例样本",
+    eyebrow: "50+ 案例",
     title: "浏览案例",
     description: "查看匿名学生路径，比较活动细节、申请方向与结果复盘。",
     mark: "case"

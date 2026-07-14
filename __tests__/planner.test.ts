@@ -29,6 +29,12 @@ describe("path planner recommendations", () => {
     expect(result.cases.length).toBeGreaterThan(0);
     expect(result.timeline).toHaveLength(4);
     expect(result.programs[0].reasons.length).toBeGreaterThan(0);
+    expect(result.programs[0].fitSummary).toBeTruthy();
+    expect(result.programs[0].cautions.length).toBeGreaterThan(0);
+    expect(result.programs[0].actionItems.length).toBeGreaterThan(0);
+    expect(result.programs.some((item) => item.program.type === "Research Program")).toBe(true);
+    expect(result.cases[0].pathSummary).toContain(result.cases[0].studentCase.anonymousCode);
+    expect(result.riskWarnings.length).toBeGreaterThan(0);
     expect(result.explanation).toContain("活动库");
   });
 });

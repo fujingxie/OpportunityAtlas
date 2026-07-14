@@ -163,7 +163,11 @@ export type PlannerProgramRecommendation = {
   program: Program;
   score: number;
   stage: string;
+  priority: "core" | "supplement" | "watch";
+  fitSummary: string;
   reasons: string[];
+  cautions: string[];
+  actionItems: string[];
   evidenceTags: string[];
   relatedCaseIds: string[];
 };
@@ -171,6 +175,7 @@ export type PlannerProgramRecommendation = {
 export type PlannerCaseRecommendation = {
   studentCase: StudentCase;
   score: number;
+  pathSummary: string;
   reasons: string[];
   evidenceTags: string[];
 };
@@ -190,6 +195,7 @@ export type PlannerRecommendationResponse = {
   cases: PlannerCaseRecommendation[];
   timeline: PlannerTimelineItem[];
   explanation: string;
+  riskWarnings: string[];
   nextAdjustments: string[];
   generatedBy: "internal_rules";
 };

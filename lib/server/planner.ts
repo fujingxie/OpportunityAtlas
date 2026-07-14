@@ -93,12 +93,41 @@ function subjectMatches(text: string, subjectArea: string) {
 }
 
 function regionMatches(text: string, targetRegion: string) {
+  if (targetRegion === "不确定") {
+    return false;
+  }
   return matchAny(text, regionAliases[targetRegion] ?? [targetRegion]);
 }
 
 function hasAnyExperience(value: string | undefined) {
   const text = normalizeText(value);
   return Boolean(text && !["无", "none", "暂无", "没有"].includes(text));
+}
+
+function gradeNumber(grade: string) {
+  const match = grade.match(/G(\d{1,2})/i);
+  return match?.[1] ? Number(match[1]) : null;
+}
+
+function gradeFit(program: Program, profile: PlannerProfile) {
+  const profileGrade = gradeNumber(profile.grade);
+  const programGrades = Array.from(program.gradeRange.matchAll(/G(\d{1,2})/gi)).map((match) =>
+    Number(match[1])
+  );
+
+  if (!profileGrade || programGrades.length === 0) {
+    return program.gradeRange.includes(profile.grade) ? "exact" : "unknown";
+  }
+  if (programGrades.includes(profileGrade)) {
+    return "exact";
+  }
+  if (programGrades.some((grade) => Math.abs(grade - profileGrade) === 1)) {
+    return "near";
+  }
+  if (/及以下/.test(program.gradeRange) && profileGrade <= Math.max(...programGrades)) {
+    return "exact";
+  }
+  return "mismatch";
 }
 
 function inferGaps(profile: PlannerProfile) {
@@ -147,15 +176,93 @@ function pushReason(reasons: string[], evidenceTags: string[], reason: string, t
   evidenceTags.push(tag);
 }
 
+function recommendationPriority(program: Program, gaps: string[]) {
+  if (program.type === "Competition" && gaps.includes("竞赛证明不足")) {
+    return "core" as const;
+  }
+  if (program.type === "Research Program" && gaps.includes("科研或项目产出不足")) {
+    return "core" as const;
+  }
+  if (program.type === "Summer School" && gaps.includes("夏校或课堂探索经历不足")) {
+    return "supplement" as const;
+  }
+  if (program.completeness < 70) {
+    return "watch" as const;
+  }
+  return "supplement" as const;
+}
+
+function buildProgramFitSummary(program: Program, profile: PlannerProfile, gaps: string[]) {
+  if (program.type === "Competition") {
+    return gaps.includes("竞赛证明不足")
+      ? "适合作为近期外部学术证明，先建立可量化成果。"
+      : "适合作为学术能力补充，帮助申请材料形成更清晰证据。";
+  }
+  if (program.type === "Research Program") {
+    return gaps.includes("科研或项目产出不足")
+      ? "适合作为中期项目产出，补足论文、展示或研究叙事。"
+      : "适合作为专业方向深化，强化已有活动主线。";
+  }
+  if (program.type === "Summer School") {
+    return ["G9", "G10", "G11"].includes(profile.grade)
+      ? "适合作为暑期方向确认，帮助判断专业兴趣和课堂适应度。"
+      : "适合作为申请前补充经历，但需要注意时间窗口。";
+  }
+  return "适合作为补充活动，完善申请叙事中的空白环节。";
+}
+
+function buildProgramCautions(program: Program, profile: PlannerProfile) {
+  const cautions: string[] = [];
+  const fit = gradeFit(program, profile);
+  if (fit === "near") {
+    cautions.push("年级只做到相邻匹配，报名前需要核对官方适龄要求。");
+  }
+  if (fit === "mismatch") {
+    cautions.push("年级匹配较弱，建议仅作为备选或后续阶段关注。");
+  }
+  if (profile.budget === "low" && !budgetMatches(program, "low")) {
+    cautions.push("费用可能不符合低成本偏好，需要确认学费、报名费和交通成本。");
+  }
+  if (profile.format !== "all" && profile.format !== program.format) {
+    cautions.push(`活动形式为${formatLabel(program.format)}，与当前偏好不完全一致。`);
+  }
+  if (!program.applicationEndDate || program.applicationEndDate === "待补充") {
+    cautions.push("报名截止时间未完整维护，提交前需要核对官网。");
+  }
+  if (program.completeness < 80) {
+    cautions.push("活动资料完整度偏低，建议先补官网、时间、费用等关键字段。");
+  }
+  return cautions.length ? cautions : ["无明显风险，仍建议以官网和顾问判断复核。"];
+}
+
+function buildProgramActionItems(program: Program) {
+  if (program.type === "Competition") {
+    return ["确认报名窗口和考点", "安排 4-8 周训练节奏", "记录成绩与晋级结果"];
+  }
+  if (program.type === "Research Program") {
+    return ["确认导师制或产出形式", "准备相关课程/项目材料", "规划论文、展示或作品沉淀"];
+  }
+  if (program.type === "Summer School") {
+    return ["确认申请材料清单", "核对住宿、签证和费用", "提前设计课程后的成果复盘"];
+  }
+  return ["核对官网信息", "确认投入时间", "明确活动产出如何服务申请主线"];
+}
+
 function scoreProgram(program: Program, profile: PlannerProfile, gaps: string[]) {
   const text = searchTextForProgram(program);
   const reasons: string[] = [];
   const evidenceTags: string[] = [];
+  const fit = gradeFit(program, profile);
   let score = 20;
 
-  if (program.gradeRange.includes(profile.grade)) {
+  if (fit === "exact") {
     score += 18;
     pushReason(reasons, evidenceTags, `适合年级覆盖 ${profile.grade}`, profile.grade);
+  } else if (fit === "near") {
+    score += 8;
+    pushReason(reasons, evidenceTags, `与 ${profile.grade} 处于相邻阶段`, "年级相邻");
+  } else if (fit === "mismatch") {
+    score -= 14;
   }
   if (subjectMatches(text, profile.subjectArea)) {
     score += 20;
@@ -191,6 +298,9 @@ function scoreProgram(program: Program, profile: PlannerProfile, gaps: string[])
   }
   if (profile.intent === "challenge" && ["Competition", "Research Program"].includes(program.type)) {
     score += 8;
+  }
+  if (profile.intent === "support" && fit === "exact") {
+    score += 5;
   }
   if (profile.intent === "cost_effective" && budgetMatches(program, "low")) {
     score += 8;
@@ -251,9 +361,20 @@ function scoreCase(studentCase: StudentCase, profile: PlannerProfile, gaps: stri
 
   return {
     score: Math.max(0, Math.min(100, score)),
+    pathSummary: buildCasePathSummary(studentCase),
     reasons: reasons.length ? reasons : ["可作为路径对照案例"],
     evidenceTags: Array.from(new Set(evidenceTags))
   };
+}
+
+function buildCasePathSummary(studentCase: StudentCase) {
+  const activities = studentCase.activityExperience
+    .slice(0, 3)
+    .map((activity) => activity.programName)
+    .join(" / ");
+  return activities
+    ? `${studentCase.anonymousCode}：${activities}，结果方向 ${studentCase.intendedMajor}`
+    : `${studentCase.anonymousCode}：${studentCase.intendedMajor}，${studentCase.resultSummary}`;
 }
 
 function formatLabel(format: PlannerProfile["format"]) {
@@ -290,6 +411,26 @@ function buildExplanation(
   const topProgram = programs[0]?.program.name ?? "当前活动库中的相关项目";
   const topCase = cases[0]?.studentCase.anonymousCode ?? "相近案例";
   return `建议先围绕 ${profile.subjectArea} 建立可证明的活动主线。系统优先选择 ${topProgram}，因为它与年级、方向或履历缺口更接近；同时参考 ${topCase} 等案例，帮助你判断活动组合如何服务申请叙事。当前不做外部联网搜索，时间、费用和官网仍以活动库维护数据为准。重点补强项：${gaps.slice(0, 3).join("、")}。`;
+}
+
+function buildRiskWarnings(
+  profile: PlannerProfile,
+  programs: PlannerProgramRecommendation[],
+  gaps: string[]
+) {
+  const warnings = [
+    "推荐基于内部活动库和案例库生成，活动时间、费用、官网仍需以官方信息复核。"
+  ];
+  if (profile.grade === "G12" && gaps.length >= 2) {
+    warnings.push("当前已接近申请窗口，建议优先选择周期短、产出明确的活动。");
+  }
+  if (profile.budget === "low" && programs.some((item) => item.cautions.some((text) => text.includes("费用")))) {
+    warnings.push("部分高分活动不完全满足低成本偏好，建议同时准备免费或线上备选。");
+  }
+  if (gaps.includes("语言成绩信息待补充")) {
+    warnings.push("语言成绩缺失会影响案例相似度判断，补充分数后结果会更准。");
+  }
+  return warnings;
 }
 
 function buildTimeline(
@@ -367,6 +508,29 @@ function findRelatedCaseIds(program: Program, cases: PlannerCaseRecommendation[]
     .map((item) => item.studentCase.id);
 }
 
+function selectDiversePrograms(programs: PlannerProgramRecommendation[]) {
+  const selected: PlannerProgramRecommendation[] = [];
+  const selectedIds = new Set<string>();
+
+  ["Competition", "Research Program", "Summer School"].forEach((type) => {
+    const item = programs.find((program) => program.program.type === type);
+    if (item && !selectedIds.has(item.program.id)) {
+      selected.push(item);
+      selectedIds.add(item.program.id);
+    }
+  });
+
+  programs.forEach((item) => {
+    if (selected.length >= 8 || selectedIds.has(item.program.id)) {
+      return;
+    }
+    selected.push(item);
+    selectedIds.add(item.program.id);
+  });
+
+  return selected.sort((left, right) => right.score - left.score);
+}
+
 export function buildPlannerRecommendations(
   profile: PlannerProfile,
   programs: Program[],
@@ -381,21 +545,26 @@ export function buildPlannerRecommendations(
     .sort((left, right) => right.score - left.score)
     .slice(0, 5);
 
-  const programRecommendations: PlannerProgramRecommendation[] = programs
+  const scoredPrograms: PlannerProgramRecommendation[] = programs
     .map((program) => {
       const scored = scoreProgram(program, profile, gaps);
       return {
         program,
         score: scored.score,
         stage: stageForProgram(program, profile),
+        priority: recommendationPriority(program, gaps),
+        fitSummary: buildProgramFitSummary(program, profile, gaps),
         reasons: scored.reasons,
+        cautions: buildProgramCautions(program, profile),
+        actionItems: buildProgramActionItems(program),
         evidenceTags: scored.evidenceTags,
         relatedCaseIds: []
       };
     })
     .filter((item) => item.score >= 28)
-    .sort((left, right) => right.score - left.score)
-    .slice(0, 8)
+    .sort((left, right) => right.score - left.score);
+
+  const programRecommendations = selectDiversePrograms(scoredPrograms)
     .map((item) => ({
       ...item,
       relatedCaseIds: findRelatedCaseIds(item.program, caseRecommendations)
@@ -408,11 +577,13 @@ export function buildPlannerRecommendations(
     cases: caseRecommendations,
     timeline: buildTimeline(profile, programRecommendations, caseRecommendations),
     explanation: buildExplanation(profile, programRecommendations, caseRecommendations, gaps),
+    riskWarnings: buildRiskWarnings(profile, programRecommendations, gaps),
     nextAdjustments: [
       "只看线上活动",
       "降低预算要求",
       "更偏竞赛证明",
       "更偏科研产出",
+      "补充夏校探索",
       "参考更稳妥案例"
     ],
     generatedBy: "internal_rules"

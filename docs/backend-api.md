@@ -271,13 +271,18 @@ type PlannerRecommendationResponse = {
     program: Program;
     score: number;
     stage: string;
+    priority: 'core' | 'supplement' | 'watch';
+    fitSummary: string;
     reasons: string[];
+    cautions: string[];
+    actionItems: string[];
     evidenceTags: string[];
     relatedCaseIds: string[];
   }>;
   cases: Array<{
     studentCase: StudentCase;
     score: number;
+    pathSummary: string;
     reasons: string[];
     evidenceTags: string[];
   }>;
@@ -289,6 +294,7 @@ type PlannerRecommendationResponse = {
     caseIds: string[];
   }>;
   explanation: string;
+  riskWarnings: string[];
   nextAdjustments: string[];
   generatedBy: 'internal_rules';
 };

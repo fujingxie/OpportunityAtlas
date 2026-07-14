@@ -5,10 +5,11 @@ import Link from "next/link";
 import { Badge, Card, EmptyState } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
 import type {
+  PlannerCaseRecommendation,
   PlannerIntent,
   PlannerProfile,
+  PlannerProgramRecommendation,
   PlannerRecommendationResponse,
-  ProgramFormat
 } from "@/lib/types";
 import { cx } from "@/lib/utils";
 
@@ -124,6 +125,10 @@ export function PathPlanner() {
     }
     if (label.includes("科研")) {
       nextProfile.research = nextProfile.research || "希望补充科研产出";
+    }
+    if (label.includes("夏校")) {
+      nextProfile.summerSchools = nextProfile.summerSchools || "希望补充夏校或课堂探索";
+      nextProfile.intent = "balanced";
     }
     if (label.includes("稳妥")) {
       nextProfile.intent = "support";
@@ -450,6 +455,8 @@ function PlannerResult({
   result: PlannerRecommendationResponse;
   onAdjustment: (label: string) => void;
 }) {
+  const groupedPrograms = groupProgramsByStage(result.programs);
+
   return (
     <div className="space-y-6">
       <Card className="rounded-[30px] p-7">
@@ -475,50 +482,47 @@ function PlannerResult({
             <Badge key={gap} tone="amber">{gap}</Badge>
           ))}
         </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <Metric label="推荐活动" value={`${result.programs.length} 个`} />
+          <Metric label="相似案例" value={`${result.cases.length} 个`} />
+          <Metric label="风险提示" value={`${result.riskWarnings.length} 条`} />
+        </div>
+        <div className="mt-5 rounded-md border border-warning/25 bg-warning/10 p-4">
+          <h3 className="text-sm font-black text-ink">需要注意</h3>
+          <ul className="mt-2 space-y-1 text-sm font-bold leading-7 text-secondary">
+            {result.riskWarnings.map((warning) => (
+              <li key={warning}>- {warning}</li>
+            ))}
+          </ul>
+        </div>
       </Card>
 
       <section className="grid gap-5 xl:grid-cols-[1fr_360px]">
         <div className="space-y-5">
           <Card className="rounded-[30px] p-7">
-            <h2 className="text-2xl font-black tracking-normal text-ink">推荐活动</h2>
-            <div className="mt-5 space-y-4">
-              {result.programs.map((item) => (
-                <div
-                  className="rounded-md border border-border bg-surface p-5"
-                  key={item.program.id}
-                >
-                  <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                    <div>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge tone={item.program.type === "Competition" ? "green" : "blue"}>
-                          {item.program.type}
-                        </Badge>
-                        <Badge>{item.stage}</Badge>
-                        <Badge>{item.score} 分</Badge>
-                      </div>
-                      <Link
-                        className="mt-3 block text-xl font-black leading-tight text-ink hover:text-primary"
-                        href={`/programs/${item.program.id}`}
-                      >
-                        {item.program.name}
-                      </Link>
-                      <p className="mt-2 text-sm font-bold leading-7 text-secondary">
-                        {item.program.description}
-                      </p>
-                    </div>
-                  </div>
-                  <ul className="mt-4 space-y-2 text-sm font-bold leading-7 text-secondary">
-                    {item.reasons.map((reason) => (
-                      <li key={reason}>- {reason}</li>
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+              <div>
+                <h2 className="text-2xl font-black tracking-normal text-ink">推荐活动</h2>
+                <p className="mt-2 text-sm font-bold leading-7 text-secondary">
+                  按执行阶段分组，先看核心动作，再看补充活动。
+                </p>
+              </div>
+              <Badge tone="blue">按阶段排序</Badge>
+            </div>
+            <div className="mt-5 space-y-6">
+              {groupedPrograms.map(([stage, programs]) => (
+                <div key={stage}>
+                  <h3 className="text-sm font-black uppercase tracking-[0.16em] text-primary">
+                    {stage}
+                  </h3>
+                  <div className="mt-3 space-y-4">
+                    {programs.map((item) => (
+                      <ProgramRecommendationCard
+                        cases={result.cases}
+                        item={item}
+                        key={item.program.id}
+                      />
                     ))}
-                  </ul>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {item.evidenceTags.map((tag) => (
-                      <Badge key={tag}>{tag}</Badge>
-                    ))}
-                    {item.relatedCaseIds.length ? (
-                      <Badge tone="green">关联案例 {item.relatedCaseIds.length}</Badge>
-                    ) : null}
                   </div>
                 </div>
               ))}
@@ -561,8 +565,13 @@ function PlannerResult({
                     <span className="text-sm font-black text-primary">{item.score}</span>
                   </div>
                   <p className="mt-2 text-sm font-bold leading-6 text-secondary">
-                    {item.studentCase.intendedMajor}｜{item.studentCase.resultSummary}
+                    {item.pathSummary}
                   </p>
+                  <ul className="mt-3 space-y-1 text-xs font-bold leading-5 text-secondary">
+                    {item.reasons.slice(0, 2).map((reason) => (
+                      <li key={reason}>- {reason}</li>
+                    ))}
+                  </ul>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {item.evidenceTags.slice(0, 3).map((tag) => (
                       <Badge key={tag}>{tag}</Badge>
@@ -590,6 +599,134 @@ function PlannerResult({
           </Card>
         </aside>
       </section>
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border bg-soft p-4">
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-muted">{label}</p>
+      <p className="mt-2 text-2xl font-black text-ink">{value}</p>
+    </div>
+  );
+}
+
+function groupProgramsByStage(programs: PlannerProgramRecommendation[]) {
+  const stageOrder = ["现在 - 3 个月", "尽快补强", "3 - 6 个月", "6 - 12 个月", "暑期窗口", "灵活安排"];
+  const stageRank = (stage: string) => {
+    const index = stageOrder.indexOf(stage);
+    return index === -1 ? stageOrder.length : index;
+  };
+  const groups = new Map<string, PlannerProgramRecommendation[]>();
+  programs.forEach((item) => {
+    groups.set(item.stage, [...(groups.get(item.stage) ?? []), item]);
+  });
+  return Array.from(groups.entries()).sort(
+    ([left], [right]) => stageRank(left) - stageRank(right)
+  );
+}
+
+function priorityBadge(item: PlannerProgramRecommendation) {
+  if (item.priority === "core") {
+    return { label: "核心动作", tone: "green" as const };
+  }
+  if (item.priority === "watch") {
+    return { label: "观察备选", tone: "amber" as const };
+  }
+  return { label: "补充选择", tone: "blue" as const };
+}
+
+function ProgramRecommendationCard({
+  item,
+  cases
+}: {
+  item: PlannerProgramRecommendation;
+  cases: PlannerCaseRecommendation[];
+}) {
+  const priority = priorityBadge(item);
+  const relatedCases = item.relatedCaseIds
+    .map((caseId) => cases.find((studentCase) => studentCase.studentCase.id === caseId))
+    .filter((studentCase): studentCase is PlannerCaseRecommendation => Boolean(studentCase));
+
+  return (
+    <div className="rounded-md border border-border bg-surface p-5">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+        <div>
+          <div className="flex flex-wrap gap-2">
+            <Badge tone={item.program.type === "Competition" ? "green" : "blue"}>
+              {item.program.type}
+            </Badge>
+            <Badge tone={priority.tone}>{priority.label}</Badge>
+            <Badge>{item.score} 分</Badge>
+          </div>
+          <Link
+            className="mt-3 block text-xl font-black leading-tight text-ink hover:text-primary"
+            href={`/programs/${item.program.id}`}
+          >
+            {item.program.name}
+          </Link>
+          <p className="mt-2 text-sm font-bold leading-7 text-secondary">
+            {item.fitSummary}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+        <ReasonBlock title="为什么适合" tone="primary" items={item.reasons} />
+        <ReasonBlock title="注意事项" tone="warning" items={item.cautions} />
+        <ReasonBlock title="下一步动作" tone="success" items={item.actionItems} />
+      </div>
+
+      {relatedCases.length ? (
+        <div className="mt-5 rounded-sm border border-border bg-soft p-4">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-muted">参考案例</p>
+          <div className="mt-3 space-y-2">
+            {relatedCases.map((studentCase) => (
+              <Link
+                className="block text-sm font-black leading-6 text-ink hover:text-primary"
+                href={`/cases/${studentCase.studentCase.id}`}
+                key={studentCase.studentCase.id}
+              >
+                {studentCase.studentCase.anonymousCode}｜{studentCase.studentCase.intendedMajor}
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {item.evidenceTags.map((tag) => (
+          <Badge key={tag}>{tag}</Badge>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ReasonBlock({
+  title,
+  items,
+  tone
+}: {
+  title: string;
+  items: string[];
+  tone: "primary" | "warning" | "success";
+}) {
+  const titleClass = {
+    primary: "text-primary",
+    warning: "text-warning",
+    success: "text-success"
+  }[tone];
+
+  return (
+    <div className="rounded-sm border border-border bg-soft p-4">
+      <h4 className={cx("text-sm font-black", titleClass)}>{title}</h4>
+      <ul className="mt-3 space-y-2 text-sm font-bold leading-6 text-secondary">
+        {items.slice(0, 3).map((item) => (
+          <li key={item}>- {item}</li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -10,10 +10,10 @@ export const navItems: NavItem[] = [
   { href: "/", label: "首页" },
   { href: "/programs", label: "活动库" },
   { href: "/cases", label: "案例库" },
+  { href: "/planner", label: "路径规划" },
   { href: "/admin/import", label: "数据管理", adminOnly: true }
 ];
 
 export function visibleNavItems(role: UserRole) {
   return navItems.filter((item) => !item.adminOnly || role === "admin");
 }
-

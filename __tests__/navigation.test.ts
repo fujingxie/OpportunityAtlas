@@ -4,7 +4,7 @@ describe("navigation visibility", () => {
   it("hides admin navigation for viewer", () => {
     const labels = visibleNavItems("viewer").map((item) => item.label);
 
-    expect(labels).toEqual(["首页", "活动库", "案例库"]);
+    expect(labels).toEqual(["首页", "活动库", "案例库", "路径规划"]);
     expect(labels).not.toContain("数据管理");
   });
 
@@ -14,4 +14,3 @@ describe("navigation visibility", () => {
     expect(labels).toContain("数据管理");
   });
 });
-

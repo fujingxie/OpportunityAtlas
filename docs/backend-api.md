@@ -1,7 +1,7 @@
 # Opportunity Atlas 后端接口开发文档
 
 **版本**：v1.0  
-**适用范围**：前端 MVP 接口契约，不包含智能匹配、AI 推荐、真实登录实现细节。  
+**适用范围**：前端 MVP 接口契约；路径规划一期基于内部活动库和案例库生成可解释推荐，不包含外部联网搜索或真实 LLM 生成。
 **品牌名**：Opportunity Atlas
 
 ## 1. 通用约定
@@ -120,6 +120,7 @@ GET /api/cases/:caseId
 GET /api/cases/:caseId/programs
 GET /api/tags
 GET /api/search
+POST /api/planner/recommendations
 ```
 
 ### 2.1 GET /api/programs
@@ -232,6 +233,64 @@ type SearchResponse = {
   programs: ProgramCard[];
   cases: CaseCard[];
   total: number;
+};
+```
+
+### 2.9 POST /api/planner/recommendations
+
+基于用户画像、活动库和案例库生成可解释路径建议。一期不调用外部搜索，也不依赖 OpenAI key；服务端使用内部规则完成活动排序、相似案例检索和解释文案组织，后续可替换解释生成层为真实 LLM。
+
+请求：
+
+```ts
+type PlannerProfile = {
+  grade: 'G9' | 'G10' | 'G11' | 'G12';
+  curriculum: string;
+  targetRegion: string;
+  subjectArea: string;
+  standardizedScore?: string;
+  languageScore?: string;
+  gpa?: string;
+  competitions?: string;
+  summerSchools?: string;
+  research?: string;
+  budget: 'all' | 'low' | 'medium' | 'high';
+  format: 'all' | 'online' | 'offline' | 'hybrid';
+  intent: 'balanced' | 'challenge' | 'support' | 'cost_effective' | 'case_reference';
+  notes?: string;
+};
+```
+
+返回：
+
+```ts
+type PlannerRecommendationResponse = {
+  profileSummary: string;
+  gaps: string[];
+  programs: Array<{
+    program: Program;
+    score: number;
+    stage: string;
+    reasons: string[];
+    evidenceTags: string[];
+    relatedCaseIds: string[];
+  }>;
+  cases: Array<{
+    studentCase: StudentCase;
+    score: number;
+    reasons: string[];
+    evidenceTags: string[];
+  }>;
+  timeline: Array<{
+    phase: string;
+    title: string;
+    description: string;
+    programIds: string[];
+    caseIds: string[];
+  }>;
+  explanation: string;
+  nextAdjustments: string[];
+  generatedBy: 'internal_rules';
 };
 ```
 

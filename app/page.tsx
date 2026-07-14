@@ -87,6 +87,12 @@ export default function HomePage() {
                 {tag}
               </Link>
             ))}
+            <Link
+              className="rounded-full border border-primary/30 bg-surface/95 px-5 py-2.5 text-sm font-black text-primary shadow-card hover:-translate-y-0.5"
+              href="/planner"
+            >
+              开始路径规划
+            </Link>
           </div>
         </div>
 

@@ -134,3 +134,62 @@ export type ImportJob = {
   createdAt: string;
   errorMessage?: string;
 };
+
+export type PlannerIntent =
+  | "balanced"
+  | "challenge"
+  | "support"
+  | "cost_effective"
+  | "case_reference";
+
+export type PlannerProfile = {
+  grade: "G9" | "G10" | "G11" | "G12";
+  curriculum: string;
+  targetRegion: string;
+  subjectArea: string;
+  standardizedScore?: string;
+  languageScore?: string;
+  gpa?: string;
+  competitions?: string;
+  summerSchools?: string;
+  research?: string;
+  budget: "all" | "low" | "medium" | "high";
+  format: "all" | ProgramFormat;
+  intent: PlannerIntent;
+  notes?: string;
+};
+
+export type PlannerProgramRecommendation = {
+  program: Program;
+  score: number;
+  stage: string;
+  reasons: string[];
+  evidenceTags: string[];
+  relatedCaseIds: string[];
+};
+
+export type PlannerCaseRecommendation = {
+  studentCase: StudentCase;
+  score: number;
+  reasons: string[];
+  evidenceTags: string[];
+};
+
+export type PlannerTimelineItem = {
+  phase: string;
+  title: string;
+  description: string;
+  programIds: string[];
+  caseIds: string[];
+};
+
+export type PlannerRecommendationResponse = {
+  profileSummary: string;
+  gaps: string[];
+  programs: PlannerProgramRecommendation[];
+  cases: PlannerCaseRecommendation[];
+  timeline: PlannerTimelineItem[];
+  explanation: string;
+  nextAdjustments: string[];
+  generatedBy: "internal_rules";
+};

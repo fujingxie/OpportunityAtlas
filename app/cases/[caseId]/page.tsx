@@ -69,6 +69,12 @@ export default function CaseDetailPage({ params }: { params: { caseId: string } 
           <div className="grid shrink-0 gap-2 sm:grid-cols-2 lg:w-[360px]">
             <Meta label="申请方向" value={studentCase.intendedMajor} />
             <Meta label="结果" value={studentCase.resultSummary} />
+            <Link
+              className="flex min-h-12 items-center justify-center rounded-sm bg-primary px-4 text-sm font-black text-white shadow-card hover:-translate-y-0.5 sm:col-span-2"
+              href={`/planner?caseId=${encodeURIComponent(studentCase.id)}`}
+            >
+              参考此案例生成路径
+            </Link>
           </div>
         </div>
       </Card>
@@ -138,6 +144,12 @@ export default function CaseDetailPage({ params }: { params: { caseId: string } 
                 </p>
               </div>
             ) : null}
+            <Link
+              className="mt-4 flex min-h-12 items-center justify-center rounded-md bg-primary px-4 text-sm font-black text-white shadow-card hover:-translate-y-0.5"
+              href={`/planner?caseId=${encodeURIComponent(studentCase.id)}`}
+            >
+              用该案例倒推活动
+            </Link>
           </Card>
 
           {relatedPrograms.length ? (

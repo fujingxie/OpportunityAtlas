@@ -258,6 +258,9 @@ type PlannerProfile = {
   format: 'all' | 'online' | 'offline' | 'hybrid';
   intent: 'balanced' | 'challenge' | 'support' | 'cost_effective' | 'case_reference';
   notes?: string;
+  sourceProgramId?: string; // 从活动库或活动详情进入时传入
+  sourceCaseId?: string;    // 从案例库或案例详情进入时传入
+  sourceQuery?: string;     // 从首页搜索或关键词入口进入时传入
 };
 ```
 
@@ -265,6 +268,12 @@ type PlannerProfile = {
 
 ```ts
 type PlannerRecommendationResponse = {
+  sourceContexts: Array<{
+    type: 'program' | 'case' | 'query';
+    id?: string;
+    label: string;
+    description?: string;
+  }>;
   profileSummary: string;
   gaps: string[];
   programs: Array<{

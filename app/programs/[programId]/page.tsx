@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { Badge, Card, EmptyState, PageShell, TextLink } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
 import type { Program, StudentCase } from "@/lib/types";
@@ -74,6 +75,12 @@ export default function ProgramDetailPage({
               <p className="mt-4 max-w-3xl text-base font-bold leading-8 text-white/80">
                 {program.description}
               </p>
+              <Link
+                className="mt-6 inline-flex min-h-12 items-center justify-center rounded-md bg-white px-5 text-sm font-black text-primary shadow-card hover:-translate-y-0.5"
+                href={`/planner?programId=${encodeURIComponent(program.id)}`}
+              >
+                基于此活动规划路径
+              </Link>
               <dl className="mt-7 grid gap-3 md:grid-cols-4">
                 <HeroMeta label="报名截止" value={program.applicationEndDate ?? "待补充"} />
                 <HeroMeta label="活动时间" value={program.programStartDate ?? "待补充"} />
@@ -151,6 +158,12 @@ export default function ProgramDetailPage({
             <p className="mt-5 text-sm font-bold leading-7 text-secondary">
               适合与该活动学科、年级或路径相近的学生做资料参考。当前仅展示关联案例，不提供自动判断结论。
             </p>
+            <Link
+              className="mt-5 flex min-h-12 items-center justify-center rounded-md bg-primary px-4 text-sm font-black text-white shadow-card hover:-translate-y-0.5"
+              href={`/planner?programId=${encodeURIComponent(program.id)}`}
+            >
+              看看是否适合我
+            </Link>
           </Card>
           <Card className="rounded-[30px] p-7">
             <h2 className="text-xl font-black tracking-normal text-ink">相关案例</h2>

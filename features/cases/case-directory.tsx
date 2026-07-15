@@ -628,14 +628,22 @@ function CaseCardItem({ studentCase }: { studentCase: StudentCase }) {
           ))}
         </div>
       </div>
-      <div className="mt-5 flex items-center justify-between gap-4 border-t border-border pt-4">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
         <p className="text-sm font-black text-ink">{studentCase.resultSummary}</p>
-        <Link
-          className="shrink-0 rounded-sm border border-border bg-surface px-4 py-3 text-sm font-black text-primary hover:border-primary"
-          href={`/cases/${studentCase.id}`}
-        >
-          详情
-        </Link>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Link
+            className="rounded-sm border border-border bg-surface px-4 py-3 text-sm font-black text-primary hover:border-primary"
+            href={`/cases/${studentCase.id}`}
+          >
+            详情
+          </Link>
+          <Link
+            className="rounded-sm bg-primary px-4 py-3 text-sm font-black text-white shadow-card hover:-translate-y-0.5"
+            href={`/planner?caseId=${encodeURIComponent(studentCase.id)}`}
+          >
+            参考规划
+          </Link>
+        </div>
       </div>
     </Card>
   );

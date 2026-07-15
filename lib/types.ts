@@ -157,6 +157,16 @@ export type PlannerProfile = {
   format: "all" | ProgramFormat;
   intent: PlannerIntent;
   notes?: string;
+  sourceProgramId?: string;
+  sourceCaseId?: string;
+  sourceQuery?: string;
+};
+
+export type PlannerSourceContext = {
+  type: "program" | "case" | "query";
+  id?: string;
+  label: string;
+  description?: string;
 };
 
 export type PlannerProgramRecommendation = {
@@ -189,6 +199,7 @@ export type PlannerTimelineItem = {
 };
 
 export type PlannerRecommendationResponse = {
+  sourceContexts: PlannerSourceContext[];
   profileSummary: string;
   gaps: string[];
   programs: PlannerProgramRecommendation[];

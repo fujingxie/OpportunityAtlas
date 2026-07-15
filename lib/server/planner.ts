@@ -4,6 +4,7 @@ import type {
   PlannerProfile,
   PlannerProgramRecommendation,
   PlannerRecommendationResponse,
+  PlannerSourceContext,
   Program,
   StudentCase
 } from "@/lib/types";
@@ -25,8 +26,17 @@ export const plannerProfileSchema = z.object({
   intent: z
     .enum(["balanced", "challenge", "support", "cost_effective", "case_reference"])
     .default("balanced"),
-  notes: z.string().trim().optional()
+  notes: z.string().trim().optional(),
+  sourceProgramId: z.string().trim().optional(),
+  sourceCaseId: z.string().trim().optional(),
+  sourceQuery: z.string().trim().optional()
 });
+
+type PlannerSourceOptions = {
+  sourceProgram?: Program;
+  sourceCase?: StudentCase;
+  sourceQuery?: string;
+};
 
 const subjectAliases: Record<string, string[]> = {
   STEM: ["STEM", "理科", "数学", "物理", "化学", "生物", "工程", "计算机", "数据", "科研"],
@@ -248,12 +258,50 @@ function buildProgramActionItems(program: Program) {
   return ["核对官网信息", "确认投入时间", "明确活动产出如何服务申请主线"];
 }
 
-function scoreProgram(program: Program, profile: PlannerProfile, gaps: string[]) {
+function sourceQueryMatches(text: string, sourceQuery?: string) {
+  return Boolean(sourceQuery && normalizeText(text).includes(normalizeText(sourceQuery)));
+}
+
+function programAppearsInCase(program: Program, studentCase?: StudentCase) {
+  return Boolean(
+    studentCase?.activityExperience.some(
+      (activity) => activity.programId === program.id || activity.programName === program.name
+    )
+  );
+}
+
+function scoreProgram(
+  program: Program,
+  profile: PlannerProfile,
+  gaps: string[],
+  source: PlannerSourceOptions = {}
+) {
   const text = searchTextForProgram(program);
   const reasons: string[] = [];
   const evidenceTags: string[] = [];
   const fit = gradeFit(program, profile);
   let score = 20;
+
+  if (source.sourceProgram?.id === program.id) {
+    score += 26;
+    pushReason(reasons, evidenceTags, "当前查看的活动已作为规划锚点", "当前活动");
+  } else if (source.sourceProgram && subjectMatches(text, source.sourceProgram.subjectArea)) {
+    score += 6;
+    pushReason(reasons, evidenceTags, "与当前活动方向相近，可作为组合补充", "同方向活动");
+  }
+
+  if (programAppearsInCase(program, source.sourceCase)) {
+    score += 18;
+    pushReason(reasons, evidenceTags, "参考案例中出现过该活动", "案例参与活动");
+  } else if (source.sourceCase && subjectMatches(text, source.sourceCase.intendedMajor)) {
+    score += 6;
+    pushReason(reasons, evidenceTags, "与参考案例申请方向相近", "案例方向");
+  }
+
+  if (sourceQueryMatches(text, source.sourceQuery)) {
+    score += 8;
+    pushReason(reasons, evidenceTags, `命中搜索关键词「${source.sourceQuery}」`, "搜索关键词");
+  }
 
   if (fit === "exact") {
     score += 18;
@@ -313,11 +361,36 @@ function scoreProgram(program: Program, profile: PlannerProfile, gaps: string[])
   };
 }
 
-function scoreCase(studentCase: StudentCase, profile: PlannerProfile, gaps: string[]) {
+function scoreCase(
+  studentCase: StudentCase,
+  profile: PlannerProfile,
+  gaps: string[],
+  source: PlannerSourceOptions = {}
+) {
   const text = searchTextForCase(studentCase);
   const reasons: string[] = [];
   const evidenceTags: string[] = [];
   let score = 18;
+
+  if (source.sourceCase?.id === studentCase.id) {
+    score += 24;
+    pushReason(reasons, evidenceTags, "当前查看的案例已作为路径参考", "当前案例");
+  }
+  if (
+    source.sourceProgram &&
+    studentCase.activityExperience.some(
+      (activity) =>
+        activity.programId === source.sourceProgram?.id ||
+        activity.programName === source.sourceProgram?.name
+    )
+  ) {
+    score += 18;
+    pushReason(reasons, evidenceTags, "该案例与当前活动存在参与关系", "活动关联案例");
+  }
+  if (sourceQueryMatches(text, source.sourceQuery)) {
+    score += 8;
+    pushReason(reasons, evidenceTags, `命中搜索关键词「${source.sourceQuery}」`, "搜索关键词");
+  }
 
   if (studentCase.grade === profile.grade) {
     score += 14;
@@ -402,25 +475,70 @@ function buildProfileSummary(profile: PlannerProfile, gaps: string[]) {
   return `${profile.grade} / ${profile.curriculum} / ${profile.subjectArea} / 目标${profile.targetRegion} / ${intentLabel(profile.intent)}。当前主要关注：${gaps.slice(0, 3).join("、")}。`;
 }
 
+function buildSourceContexts(source: PlannerSourceOptions): PlannerSourceContext[] {
+  const contexts: PlannerSourceContext[] = [];
+  if (source.sourceProgram) {
+    contexts.push({
+      type: "program",
+      id: source.sourceProgram.id,
+      label: source.sourceProgram.name,
+      description: `当前活动：${source.sourceProgram.type} / ${source.sourceProgram.gradeRange} / ${source.sourceProgram.subjectArea}`
+    });
+  }
+  if (source.sourceCase) {
+    contexts.push({
+      type: "case",
+      id: source.sourceCase.id,
+      label: source.sourceCase.anonymousCode,
+      description: `参考案例：${source.sourceCase.grade} / ${source.sourceCase.intendedMajor} / ${source.sourceCase.resultSummary}`
+    });
+  }
+  if (source.sourceQuery) {
+    contexts.push({
+      type: "query",
+      label: source.sourceQuery,
+      description: "来自首页或搜索入口的关键词"
+    });
+  }
+  return contexts;
+}
+
 function buildExplanation(
   profile: PlannerProfile,
   programs: PlannerProgramRecommendation[],
   cases: PlannerCaseRecommendation[],
-  gaps: string[]
+  gaps: string[],
+  source: PlannerSourceOptions = {}
 ) {
   const topProgram = programs[0]?.program.name ?? "当前活动库中的相关项目";
   const topCase = cases[0]?.studentCase.anonymousCode ?? "相近案例";
+  if (source.sourceProgram) {
+    return `本次以活动「${source.sourceProgram.name}」为锚点，先判断它在 ${profile.subjectArea} 路径里更适合作为核心动作还是补充选择，再补充同方向活动与相关案例。系统优先选择 ${topProgram}，并参考 ${topCase} 等案例解释活动组合。当前不做外部联网搜索，时间、费用和官网仍以活动库维护数据为准。重点补强项：${gaps.slice(0, 3).join("、")}。`;
+  }
+  if (source.sourceCase) {
+    return `本次以案例「${source.sourceCase.anonymousCode}」为参考路径，先提取该案例中的活动组合和申请方向，再反推你当前阶段需要补齐的活动证据。系统优先选择 ${topProgram}，并用 ${topCase} 等案例做对照。当前不做外部联网搜索，时间、费用和官网仍以活动库维护数据为准。重点补强项：${gaps.slice(0, 3).join("、")}。`;
+  }
+  if (source.sourceQuery) {
+    return `本次参考搜索关键词「${source.sourceQuery}」生成路径，系统会优先考虑命中关键词的活动与案例，同时结合年级、方向和履历缺口做排序。当前优先选择 ${topProgram}，并参考 ${topCase} 等案例。时间、费用和官网仍以活动库维护数据为准。重点补强项：${gaps.slice(0, 3).join("、")}。`;
+  }
   return `建议先围绕 ${profile.subjectArea} 建立可证明的活动主线。系统优先选择 ${topProgram}，因为它与年级、方向或履历缺口更接近；同时参考 ${topCase} 等案例，帮助你判断活动组合如何服务申请叙事。当前不做外部联网搜索，时间、费用和官网仍以活动库维护数据为准。重点补强项：${gaps.slice(0, 3).join("、")}。`;
 }
 
 function buildRiskWarnings(
   profile: PlannerProfile,
   programs: PlannerProgramRecommendation[],
-  gaps: string[]
+  gaps: string[],
+  source: PlannerSourceOptions = {}
 ) {
   const warnings = [
     "推荐基于内部活动库和案例库生成，活动时间、费用、官网仍需以官方信息复核。"
   ];
+  if (source.sourceProgram) {
+    warnings.push("当前活动只是规划锚点，不代表必须参加；若年级、费用或时间不合适，应选择替代活动。");
+  }
+  if (source.sourceCase) {
+    warnings.push("参考案例不能直接复制，需要结合你的成绩、时间窗口和活动产出重新取舍。");
+  }
   if (profile.grade === "G12" && gaps.length >= 2) {
     warnings.push("当前已接近申请窗口，建议优先选择周期短、产出明确的活动。");
   }
@@ -508,9 +626,46 @@ function findRelatedCaseIds(program: Program, cases: PlannerCaseRecommendation[]
     .map((item) => item.studentCase.id);
 }
 
-function selectDiversePrograms(programs: PlannerProgramRecommendation[]) {
+function selectRelevantCases(
+  cases: PlannerCaseRecommendation[],
+  source: PlannerSourceOptions = {}
+) {
+  const selected: PlannerCaseRecommendation[] = [];
+  const selectedIds = new Set<string>();
+
+  const sourceCase = source.sourceCase
+    ? cases.find((item) => item.studentCase.id === source.sourceCase?.id)
+    : null;
+  if (sourceCase) {
+    selected.push(sourceCase);
+    selectedIds.add(sourceCase.studentCase.id);
+  }
+
+  cases.forEach((item) => {
+    if (selected.length >= 5 || selectedIds.has(item.studentCase.id)) {
+      return;
+    }
+    selected.push(item);
+    selectedIds.add(item.studentCase.id);
+  });
+
+  return selected.sort((left, right) => right.score - left.score);
+}
+
+function selectDiversePrograms(
+  programs: PlannerProgramRecommendation[],
+  source: PlannerSourceOptions = {}
+) {
   const selected: PlannerProgramRecommendation[] = [];
   const selectedIds = new Set<string>();
+
+  const sourceProgram = source.sourceProgram
+    ? programs.find((item) => item.program.id === source.sourceProgram?.id)
+    : null;
+  if (sourceProgram) {
+    selected.push(sourceProgram);
+    selectedIds.add(sourceProgram.program.id);
+  }
 
   ["Competition", "Research Program", "Summer School"].forEach((type) => {
     const item = programs.find((program) => program.program.type === type);
@@ -534,20 +689,21 @@ function selectDiversePrograms(programs: PlannerProgramRecommendation[]) {
 export function buildPlannerRecommendations(
   profile: PlannerProfile,
   programs: Program[],
-  studentCases: StudentCase[]
+  studentCases: StudentCase[],
+  source: PlannerSourceOptions = {}
 ): PlannerRecommendationResponse {
   const gaps = inferGaps(profile);
   const caseRecommendations: PlannerCaseRecommendation[] = studentCases
     .map((studentCase) => ({
       studentCase,
-      ...scoreCase(studentCase, profile, gaps)
+      ...scoreCase(studentCase, profile, gaps, source)
     }))
-    .sort((left, right) => right.score - left.score)
-    .slice(0, 5);
+    .sort((left, right) => right.score - left.score);
+  const selectedCases = selectRelevantCases(caseRecommendations, source);
 
   const scoredPrograms: PlannerProgramRecommendation[] = programs
     .map((program) => {
-      const scored = scoreProgram(program, profile, gaps);
+      const scored = scoreProgram(program, profile, gaps, source);
       return {
         program,
         score: scored.score,
@@ -561,23 +717,24 @@ export function buildPlannerRecommendations(
         relatedCaseIds: []
       };
     })
-    .filter((item) => item.score >= 28)
+    .filter((item) => item.score >= 28 || item.program.id === source.sourceProgram?.id)
     .sort((left, right) => right.score - left.score);
 
-  const programRecommendations = selectDiversePrograms(scoredPrograms)
+  const programRecommendations = selectDiversePrograms(scoredPrograms, source)
     .map((item) => ({
       ...item,
-      relatedCaseIds: findRelatedCaseIds(item.program, caseRecommendations)
+      relatedCaseIds: findRelatedCaseIds(item.program, selectedCases)
     }));
 
   return {
+    sourceContexts: buildSourceContexts(source),
     profileSummary: buildProfileSummary(profile, gaps),
     gaps,
     programs: programRecommendations,
-    cases: caseRecommendations,
-    timeline: buildTimeline(profile, programRecommendations, caseRecommendations),
-    explanation: buildExplanation(profile, programRecommendations, caseRecommendations, gaps),
-    riskWarnings: buildRiskWarnings(profile, programRecommendations, gaps),
+    cases: selectedCases,
+    timeline: buildTimeline(profile, programRecommendations, selectedCases),
+    explanation: buildExplanation(profile, programRecommendations, selectedCases, gaps, source),
+    riskWarnings: buildRiskWarnings(profile, programRecommendations, gaps, source),
     nextAdjustments: [
       "只看线上活动",
       "降低预算要求",
@@ -591,11 +748,18 @@ export function buildPlannerRecommendations(
 }
 
 export async function buildPlannerRecommendationsFromCatalog(profile: PlannerProfile) {
-  const { listCases, listPrograms } = await import("@/lib/server/catalog");
-  const [programResult, caseResult] = await Promise.all([
+  const { getProgram, getStudentCase, listCases, listPrograms } = await import("@/lib/server/catalog");
+  const [programResult, caseResult, sourceProgram, sourceCase] = await Promise.all([
     listPrograms({}, { page: 1, pageSize: 300, sortBy: "updatedAt", sortOrder: "desc" }),
-    listCases({}, { page: 1, pageSize: 300, sortBy: "updatedAt", sortOrder: "desc" })
+    listCases({}, { page: 1, pageSize: 300, sortBy: "updatedAt", sortOrder: "desc" }),
+    profile.sourceProgramId ? getProgram(profile.sourceProgramId) : Promise.resolve(null),
+    profile.sourceCaseId ? getStudentCase(profile.sourceCaseId) : Promise.resolve(null)
   ]);
+  const sourceQuery = profile.sourceQuery?.trim();
 
-  return buildPlannerRecommendations(profile, programResult.items, caseResult.items);
+  return buildPlannerRecommendations(profile, programResult.items, caseResult.items, {
+    sourceProgram: sourceProgram ?? undefined,
+    sourceCase: sourceCase ?? undefined,
+    sourceQuery: sourceQuery || undefined
+  });
 }

@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Badge, Card, EmptyState } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
 import type {
+  PlannerSourceContext,
   PlannerCaseRecommendation,
   PlannerIntent,
   PlannerProfile,
   PlannerProgramRecommendation,
   PlannerRecommendationResponse,
+  Program,
+  StudentCase,
 } from "@/lib/types";
 import { cx } from "@/lib/utils";
 
@@ -80,12 +83,128 @@ const initialProfile: PlannerProfile = {
   notes: ""
 };
 
-export function PathPlanner() {
-  const [profile, setProfile] = useState<PlannerProfile>(initialProfile);
+type PathPlannerProps = {
+  sourceProgramId?: string;
+  sourceCaseId?: string;
+  sourceQuery?: string;
+};
+
+function cleanSource(value?: string) {
+  const trimmed = value?.trim();
+  return trimmed || undefined;
+}
+
+function buildInitialProfile({
+  sourceProgramId,
+  sourceCaseId,
+  sourceQuery
+}: PathPlannerProps): PlannerProfile {
+  const query = cleanSource(sourceQuery);
+  return {
+    ...initialProfile,
+    sourceProgramId: cleanSource(sourceProgramId),
+    sourceCaseId: cleanSource(sourceCaseId),
+    sourceQuery: query,
+    notes: query ? `从搜索关键词「${query}」开始规划` : initialProfile.notes
+  };
+}
+
+export function PathPlanner(props: PathPlannerProps = {}) {
+  const [profile, setProfile] = useState<PlannerProfile>(() => buildInitialProfile(props));
+  const [sourceContext, setSourceContext] = useState<PlannerSourceContext | null>(
+    props.sourceQuery
+      ? {
+          type: "query",
+          label: props.sourceQuery,
+          description: "来自首页或搜索入口的关键词"
+        }
+      : null
+  );
   const [step, setStep] = useState<PlannerStep>(1);
   const [result, setResult] = useState<PlannerRecommendationResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const sourceProgramId = cleanSource(props.sourceProgramId);
+    const sourceCaseId = cleanSource(props.sourceCaseId);
+    const sourceQuery = cleanSource(props.sourceQuery);
+    if (!sourceProgramId && !sourceCaseId && sourceQuery) {
+      setSourceContext({
+        type: "query",
+        label: sourceQuery,
+        description: "来自首页或搜索入口的关键词"
+      });
+      setProfile((current) => ({
+        ...current,
+        sourceQuery,
+        notes: current.notes || `从搜索关键词「${sourceQuery}」开始规划`
+      }));
+      return;
+    }
+
+    let cancelled = false;
+    async function loadSourceContext() {
+      try {
+        if (sourceProgramId) {
+          const response = await apiFetch<Program>(`/api/programs/${sourceProgramId}`);
+          if (cancelled) {
+            return;
+          }
+          const program = response.data;
+          setSourceContext({
+            type: "program",
+            id: program.id,
+            label: program.name,
+            description: `${program.type} / ${program.gradeRange} / ${program.subjectArea}`
+          });
+          setProfile((current) => ({
+            ...current,
+            sourceProgramId: program.id,
+            sourceQuery,
+            subjectArea: inferPlannerSubject(program.subjectArea, program.tags),
+            format: program.format,
+            notes: current.notes || `评估活动「${program.name}」是否适合当前路径`
+          }));
+          return;
+        }
+
+        if (sourceCaseId) {
+          const response = await apiFetch<StudentCase>(`/api/cases/${sourceCaseId}`);
+          if (cancelled) {
+            return;
+          }
+          const studentCase = response.data;
+          setSourceContext({
+            type: "case",
+            id: studentCase.id,
+            label: studentCase.anonymousCode,
+            description: `${studentCase.grade} / ${studentCase.intendedMajor} / ${studentCase.resultSummary}`
+          });
+          setProfile((current) => ({
+            ...current,
+            sourceCaseId: studentCase.id,
+            sourceQuery,
+            grade: studentCase.grade,
+            subjectArea: inferPlannerSubject(studentCase.intendedMajor, studentCase.tags),
+            competitions: summarizeCaseActivity(studentCase, "Competition") || current.competitions,
+            summerSchools:
+              summarizeCaseActivity(studentCase, "Summer School") || current.summerSchools,
+            research: summarizeCaseActivity(studentCase, "Research Program") || current.research,
+            intent: "case_reference",
+            notes: current.notes || `参考案例「${studentCase.anonymousCode}」生成相似路径`
+          }));
+        }
+      } catch {
+        setSourceContext(null);
+      }
+    }
+
+    void loadSourceContext();
+    return () => {
+      cancelled = true;
+    };
+  }, [props.sourceCaseId, props.sourceProgramId, props.sourceQuery]);
 
   const updateProfile = <K extends keyof PlannerProfile>(key: K, value: PlannerProfile[K]) => {
     setProfile((current) => ({ ...current, [key]: value }));
@@ -147,6 +266,7 @@ export function PathPlanner() {
         <p className="mt-3 text-sm font-bold leading-7 text-secondary">
           基于内部活动库和案例库生成推荐活动、相似案例和阶段路径。
         </p>
+        {sourceContext ? <SourceContextCard context={sourceContext} /> : null}
 
         <div className="mt-6 grid grid-cols-3 gap-2">
           {[1, 2, 3].map((item) => (
@@ -343,6 +463,11 @@ export function PathPlanner() {
             <p className="mt-4 max-w-2xl text-sm font-bold leading-7 text-secondary">
               第一版不会联网搜索，也不会编造官网、时间和费用；所有推荐都来自当前活动库与案例库。
             </p>
+            {sourceContext ? (
+              <div className="mt-5 max-w-2xl">
+                <SourceContextCard context={sourceContext} compact />
+              </div>
+            ) : null}
             <div className="mt-7 grid gap-4 md:grid-cols-3">
               {[
                 ["1", "画像摘要", "把年级、体系、目标地区和方向整理成可计算画像。"],
@@ -448,6 +573,73 @@ function TextField({
   );
 }
 
+function SourceContextCard({
+  context,
+  compact = false
+}: {
+  context: PlannerSourceContext;
+  compact?: boolean;
+}) {
+  const href =
+    context.type === "program" && context.id
+      ? `/programs/${context.id}`
+      : context.type === "case" && context.id
+        ? `/cases/${context.id}`
+        : null;
+  const label = {
+    program: "当前活动",
+    case: "参考案例",
+    query: "搜索关键词"
+  }[context.type];
+  const content = (
+    <div
+      className={cx(
+        "rounded-md border border-primary/20 bg-primary/5",
+        compact ? "p-4" : "mt-5 p-4"
+      )}
+    >
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">{label}</p>
+      <p className="mt-2 text-sm font-black leading-6 text-ink">{context.label}</p>
+      {context.description ? (
+        <p className="mt-1 text-xs font-bold leading-5 text-secondary">{context.description}</p>
+      ) : null}
+    </div>
+  );
+
+  return href ? (
+    <Link className="block hover:-translate-y-0.5" href={href}>
+      {content}
+    </Link>
+  ) : (
+    content
+  );
+}
+
+function inferPlannerSubject(text: string, tags: string[]) {
+  const searchable = [text, ...tags].join(" ").toLowerCase();
+  if (/(stem|理科|数学|物理|化学|生物|工程|计算机|数据|research|science)/i.test(searchable)) {
+    return "STEM";
+  }
+  if (/(商科|经济|business|econ|finance|management)/i.test(searchable)) {
+    return "商科/经济";
+  }
+  if (/(人文|社科|history|politic|social|global|writing|law)/i.test(searchable)) {
+    return "人文社科";
+  }
+  if (/(艺术|传媒|design|media|film|music)/i.test(searchable)) {
+    return "艺术传媒";
+  }
+  return "不确定";
+}
+
+function summarizeCaseActivity(studentCase: StudentCase, type: string) {
+  return studentCase.activityExperience
+    .filter((activity) => activity.type === type)
+    .slice(0, 3)
+    .map((activity) => activity.programName)
+    .join(" / ");
+}
+
 function PlannerResult({
   result,
   onAdjustment
@@ -474,6 +666,17 @@ function PlannerResult({
           </div>
           <Badge tone="blue">内部活动库 + 案例库</Badge>
         </div>
+        {result.sourceContexts.length ? (
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {result.sourceContexts.map((context) => (
+              <SourceContextCard
+                compact
+                context={context}
+                key={`${context.type}-${context.id ?? context.label}`}
+              />
+            ))}
+          </div>
+        ) : null}
         <p className="mt-5 rounded-md border border-border bg-soft p-4 text-sm font-bold leading-7 text-secondary">
           {result.explanation}
         </p>

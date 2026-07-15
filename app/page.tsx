@@ -66,10 +66,18 @@ export default function HomePage() {
             />
             <button
               aria-label="搜索"
-              className="m-1.5 min-w-[132px] rounded-full bg-[image:var(--gradient-primary)] px-6 text-sm font-black text-white shadow-card hover:-translate-y-0.5"
+              className="m-1.5 min-w-[104px] rounded-full bg-[image:var(--gradient-primary)] px-5 text-sm font-black text-white shadow-card hover:-translate-y-0.5"
               type="submit"
             >
               搜索
+            </button>
+            <button
+              aria-label="基于搜索词生成路径规划"
+              className="my-1.5 mr-1.5 hidden min-w-[104px] rounded-full bg-navy px-5 text-sm font-black text-white shadow-card hover:-translate-y-0.5 sm:block"
+              formAction="/planner"
+              type="submit"
+            >
+              规划
             </button>
           </form>
 

@@ -37,4 +37,45 @@ describe("path planner recommendations", () => {
     expect(result.riskWarnings.length).toBeGreaterThan(0);
     expect(result.explanation).toContain("活动库");
   });
+
+  it("keeps source program and source case as planning anchors", () => {
+    const profile: PlannerProfile = {
+      grade: "G10",
+      curriculum: "A-Level",
+      targetRegion: "美国",
+      subjectArea: "STEM",
+      standardizedScore: "数学较强",
+      languageScore: "托福 105",
+      gpa: "年级前 10%",
+      competitions: "",
+      summerSchools: "",
+      research: "",
+      budget: "all",
+      format: "all",
+      intent: "case_reference",
+      sourceProgramId: mockPrograms[0].id,
+      sourceCaseId: mockCases[0].id,
+      sourceQuery: "STEM"
+    };
+
+    const result = buildPlannerRecommendations(profile, mockPrograms, mockCases, {
+      sourceProgram: mockPrograms[0],
+      sourceCase: mockCases[0],
+      sourceQuery: "STEM"
+    });
+
+    expect(result.sourceContexts.map((context) => context.type)).toEqual([
+      "program",
+      "case",
+      "query"
+    ]);
+    expect(result.programs.map((item) => item.program.id)).toContain(mockPrograms[0].id);
+    expect(result.cases.map((item) => item.studentCase.id)).toContain(mockCases[0].id);
+    expect(result.explanation).toContain(mockPrograms[0].name);
+    expect(result.riskWarnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("当前活动只是规划锚点")
+      ])
+    );
+  });
 });

@@ -762,12 +762,20 @@ function ProgramCardItem({ program }: { program: Program }) {
               />
             </div>
           </div>
-          <Link
-            className="inline-flex min-h-14 items-center justify-center rounded-md bg-[image:var(--gradient-primary)] px-4 text-sm font-black text-white shadow-card hover:-translate-y-0.5"
-            href={`/programs/${program.id}`}
-          >
-            查看详情
-          </Link>
+          <div className="grid gap-2">
+            <Link
+              className="inline-flex min-h-12 items-center justify-center rounded-md bg-[image:var(--gradient-primary)] px-4 text-sm font-black text-white shadow-card hover:-translate-y-0.5"
+              href={`/programs/${program.id}`}
+            >
+              查看详情
+            </Link>
+            <Link
+              className="inline-flex min-h-12 items-center justify-center rounded-md border border-primary/30 bg-surface px-4 text-sm font-black text-primary hover:border-primary"
+              href={`/planner?programId=${encodeURIComponent(program.id)}`}
+            >
+              加入路径规划
+            </Link>
+          </div>
         </div>
       </div>
     </Card>

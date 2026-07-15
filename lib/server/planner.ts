@@ -8,6 +8,7 @@ import type {
   Program,
   StudentCase
 } from "@/lib/types";
+import { buildPlannerAdvisorExplanation } from "@/lib/server/planner-explanation";
 import { includesAny, normalizeText } from "@/lib/utils";
 
 export const plannerProfileSchema = z.object({
@@ -725,16 +726,31 @@ export function buildPlannerRecommendations(
       ...item,
       relatedCaseIds: findRelatedCaseIds(item.program, selectedCases)
     }));
+  const sourceContexts = buildSourceContexts(source);
+  const timeline = buildTimeline(profile, programRecommendations, selectedCases);
+  const explanation = buildExplanation(profile, programRecommendations, selectedCases, gaps, source);
+  const riskWarnings = buildRiskWarnings(profile, programRecommendations, gaps, source);
+  const advisorExplanation = buildPlannerAdvisorExplanation({
+    profile,
+    sourceContexts,
+    gaps,
+    programs: programRecommendations,
+    cases: selectedCases,
+    timeline,
+    riskWarnings,
+    ruleExplanation: explanation
+  });
 
   return {
-    sourceContexts: buildSourceContexts(source),
+    sourceContexts,
     profileSummary: buildProfileSummary(profile, gaps),
     gaps,
     programs: programRecommendations,
     cases: selectedCases,
-    timeline: buildTimeline(profile, programRecommendations, selectedCases),
-    explanation: buildExplanation(profile, programRecommendations, selectedCases, gaps, source),
-    riskWarnings: buildRiskWarnings(profile, programRecommendations, gaps, source),
+    timeline,
+    explanation,
+    advisorExplanation,
+    riskWarnings,
     nextAdjustments: [
       "只看线上活动",
       "降低预算要求",

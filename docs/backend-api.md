@@ -303,11 +303,29 @@ type PlannerRecommendationResponse = {
     caseIds: string[];
   }>;
   explanation: string;
+  advisorExplanation: {
+    mode: 'rules' | 'ai_ready';
+    headline: string;
+    summary: string;
+    stageAdvice: Array<{
+      phase: string;
+      advice: string;
+    }>;
+    evidence: string[];
+    guardrails: string[];
+    nextStep: string;
+  };
   riskWarnings: string[];
   nextAdjustments: string[];
   generatedBy: 'internal_rules';
 };
 ```
+
+说明：
+
+- 当前 `advisorExplanation.mode` 返回 `ai_ready`，表示解释层结构已按未来 AI 接入设计，但内容仍由服务端模板生成。
+- 未来真实 AI 只允许改写 `advisorExplanation` 的表达，不直接改动活动排序、案例排序、事实字段和风险提示。
+- 活动官网、费用、日期、案例结果等事实字段必须来自数据库，不允许由 AI 编造。
 
 ## 3. Admin APIs
 

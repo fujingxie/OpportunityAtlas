@@ -5,12 +5,13 @@ import Link from "next/link";
 import { Badge, Card, EmptyState } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
 import type {
-  PlannerSourceContext,
+  PlannerAdvisorExplanation,
   PlannerCaseRecommendation,
   PlannerIntent,
   PlannerProfile,
   PlannerProgramRecommendation,
   PlannerRecommendationResponse,
+  PlannerSourceContext,
   Program,
   StudentCase,
 } from "@/lib/types";
@@ -680,6 +681,7 @@ function PlannerResult({
         <p className="mt-5 rounded-md border border-border bg-soft p-4 text-sm font-bold leading-7 text-secondary">
           {result.explanation}
         </p>
+        <AdvisorExplanationCard explanation={result.advisorExplanation} />
         <div className="mt-5 flex flex-wrap gap-2">
           {result.gaps.map((gap) => (
             <Badge key={gap} tone="amber">{gap}</Badge>
@@ -802,6 +804,57 @@ function PlannerResult({
           </Card>
         </aside>
       </section>
+    </div>
+  );
+}
+
+function AdvisorExplanationCard({ explanation }: { explanation: PlannerAdvisorExplanation }) {
+  return (
+    <div className="mt-5 rounded-md border border-primary/20 bg-gradient-to-b from-primary/5 to-surface p-5">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">
+            Advisor Layer
+          </p>
+          <h3 className="mt-2 text-xl font-black tracking-normal text-ink">
+            {explanation.headline}
+          </h3>
+        </div>
+        <Badge tone="blue">
+          {explanation.mode === "ai_ready" ? "AI-ready" : "规则解释"}
+        </Badge>
+      </div>
+      <p className="mt-4 text-sm font-bold leading-7 text-secondary">
+        {explanation.summary}
+      </p>
+
+      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+        <ExplanationBlock
+          items={explanation.stageAdvice.map((item) => `${item.phase}：${item.advice}`)}
+          title="阶段建议"
+        />
+        <ExplanationBlock items={explanation.evidence} title="系统依据" />
+        <ExplanationBlock items={explanation.guardrails} title="解释边界" />
+      </div>
+      <div className="mt-4 rounded-sm border border-border bg-surface p-4">
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-muted">下一步</p>
+        <p className="mt-2 text-sm font-bold leading-6 text-secondary">
+          {explanation.nextStep}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ExplanationBlock({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-sm border border-border bg-surface p-4">
+      <h4 className="text-sm font-black text-ink">{title}</h4>
+      <ul className="mt-3 space-y-2 text-sm font-bold leading-6 text-secondary">
+        {items.slice(0, 4).map((item) => (
+          <li key={item}>- {item}</li>
+        ))}
+      </ul>
     </div>
   );
 }

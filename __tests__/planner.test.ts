@@ -35,6 +35,10 @@ describe("path planner recommendations", () => {
     expect(result.programs.some((item) => item.program.type === "Research Program")).toBe(true);
     expect(result.cases[0].pathSummary).toContain(result.cases[0].studentCase.anonymousCode);
     expect(result.riskWarnings.length).toBeGreaterThan(0);
+    expect(result.advisorExplanation.mode).toBe("ai_ready");
+    expect(result.advisorExplanation.guardrails).toEqual(
+      expect.arrayContaining([expect.stringContaining("不编造活动官网")])
+    );
     expect(result.explanation).toContain("活动库");
   });
 

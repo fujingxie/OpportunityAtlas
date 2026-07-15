@@ -169,6 +169,21 @@ export type PlannerSourceContext = {
   description?: string;
 };
 
+export type PlannerExplanationMode = "rules" | "ai_ready";
+
+export type PlannerAdvisorExplanation = {
+  mode: PlannerExplanationMode;
+  headline: string;
+  summary: string;
+  stageAdvice: Array<{
+    phase: string;
+    advice: string;
+  }>;
+  evidence: string[];
+  guardrails: string[];
+  nextStep: string;
+};
+
 export type PlannerProgramRecommendation = {
   program: Program;
   score: number;
@@ -206,6 +221,7 @@ export type PlannerRecommendationResponse = {
   cases: PlannerCaseRecommendation[];
   timeline: PlannerTimelineItem[];
   explanation: string;
+  advisorExplanation: PlannerAdvisorExplanation;
   riskWarnings: string[];
   nextAdjustments: string[];
   generatedBy: "internal_rules";

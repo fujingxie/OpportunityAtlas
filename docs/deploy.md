@@ -53,9 +53,21 @@ ADMIN_PASSWORD="替换成强管理员密码"
 SESSION_SECRET="替换成长随机字符串"
 SESSION_COOKIE_SECURE="false"
 NEXT_PUBLIC_APP_URL="http://38.76.166.42:3100"
+PLANNER_EXPLANATION_PROVIDER="template"
 ```
 
 测试阶段使用 `http://38.76.166.42:3100`，所以 `SESSION_COOKIE_SECURE` 必须是 `false`，否则浏览器不会在 HTTP 下保存管理员 session cookie。后续接入 HTTPS 域名后再改为 `true`。
+
+路径规划解释层默认使用模板。如果要启用 DeepSeek 顾问式解释，额外配置：
+
+```env
+PLANNER_EXPLANATION_PROVIDER="deepseek"
+PLANNER_EXPLANATION_MODEL="deepseek-v4-flash"
+DEEPSEEK_BASE_URL="https://api.deepseek.com"
+DEEPSEEK_API_KEY="你的 DeepSeek API Key"
+```
+
+DeepSeek 只改写规划解读文案；活动排序、案例排序、风险提示和事实字段仍由系统规则控制。DeepSeek 调用失败或返回结构不合法时会自动回退模板解释。
 
 生成 session secret 可用：
 

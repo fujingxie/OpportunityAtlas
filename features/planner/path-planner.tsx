@@ -820,9 +820,7 @@ function AdvisorExplanationCard({ explanation }: { explanation: PlannerAdvisorEx
             {explanation.headline}
           </h3>
         </div>
-        <Badge tone="blue">
-          {explanation.mode === "ai_ready" ? "AI-ready" : "规则解释"}
-        </Badge>
+        <Badge tone="blue">{explanationModeLabel(explanation.mode)}</Badge>
       </div>
       <p className="mt-4 text-sm font-bold leading-7 text-secondary">
         {explanation.summary}
@@ -844,6 +842,16 @@ function AdvisorExplanationCard({ explanation }: { explanation: PlannerAdvisorEx
       </div>
     </div>
   );
+}
+
+function explanationModeLabel(mode: PlannerAdvisorExplanation["mode"]) {
+  if (mode === "deepseek") {
+    return "DeepSeek";
+  }
+  if (mode === "ai_ready") {
+    return "AI-ready";
+  }
+  return "规则解释";
 }
 
 function ExplanationBlock({ title, items }: { title: string; items: string[] }) {

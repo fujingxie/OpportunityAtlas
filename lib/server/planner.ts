@@ -8,7 +8,10 @@ import type {
   Program,
   StudentCase
 } from "@/lib/types";
-import { buildPlannerAdvisorExplanation } from "@/lib/server/planner-explanation";
+import {
+  buildPlannerAdvisorExplanation,
+  buildPlannerAdvisorExplanationWithProvider
+} from "@/lib/server/planner-explanation";
 import { includesAny, normalizeText } from "@/lib/utils";
 
 export const plannerProfileSchema = z.object({
@@ -773,9 +776,24 @@ export async function buildPlannerRecommendationsFromCatalog(profile: PlannerPro
   ]);
   const sourceQuery = profile.sourceQuery?.trim();
 
-  return buildPlannerRecommendations(profile, programResult.items, caseResult.items, {
+  const result = buildPlannerRecommendations(profile, programResult.items, caseResult.items, {
     sourceProgram: sourceProgram ?? undefined,
     sourceCase: sourceCase ?? undefined,
     sourceQuery: sourceQuery || undefined
   });
+  const advisorExplanation = await buildPlannerAdvisorExplanationWithProvider({
+    profile,
+    sourceContexts: result.sourceContexts,
+    gaps: result.gaps,
+    programs: result.programs,
+    cases: result.cases,
+    timeline: result.timeline,
+    riskWarnings: result.riskWarnings,
+    ruleExplanation: result.explanation
+  });
+
+  return {
+    ...result,
+    advisorExplanation
+  };
 }

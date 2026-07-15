@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type {
   PlannerAdvisorExplanation,
   PlannerCaseRecommendation,
@@ -17,6 +18,23 @@ type PlannerExplanationInput = {
   riskWarnings: string[];
   ruleExplanation: string;
 };
+
+const deepseekExplanationSchema = z.object({
+  headline: z.string().trim().min(1).max(40),
+  summary: z.string().trim().min(20).max(800),
+  stageAdvice: z
+    .array(
+      z.object({
+        phase: z.string().trim().min(1).max(30),
+        advice: z.string().trim().min(10).max(240)
+      })
+    )
+    .min(1)
+    .max(6),
+  evidence: z.array(z.string().trim().min(1).max(180)).min(1).max(6),
+  guardrails: z.array(z.string().trim().min(1).max(180)).min(1).max(6),
+  nextStep: z.string().trim().min(10).max(240)
+});
 
 function sourceContextText(sourceContexts: PlannerSourceContext[]) {
   if (!sourceContexts.length) {
@@ -83,9 +101,17 @@ export function buildPlannerAdvisorExplanation(
 export function buildPlannerAiPrompt(input: PlannerExplanationInput) {
   return {
     system:
-      "你是升学活动规划顾问。只能基于给定活动库、案例库和规则结果做解释，不能编造外部事实、官网、费用、日期或录取结果。",
+      "你是升学活动规划顾问。只能基于给定活动库、案例库和规则结果做解释，不能编造外部事实、官网、费用、日期或录取结果。必须输出合法 JSON，不要输出 Markdown。",
     user: JSON.stringify(
       {
+        outputSchema: {
+          headline: "string，不超过 40 字",
+          summary: "string，用顾问口吻解释规划逻辑，不超过 800 字",
+          stageAdvice: [{ phase: "string", advice: "string" }],
+          evidence: ["string，列出系统依据"],
+          guardrails: ["string，列出解释边界"],
+          nextStep: "string，下一步行动建议"
+        },
         profile: input.profile,
         sourceContexts: input.sourceContexts,
         gaps: input.gaps,
@@ -114,4 +140,96 @@ export function buildPlannerAiPrompt(input: PlannerExplanationInput) {
       2
     )
   };
+}
+
+function deepseekConfig() {
+  return {
+    apiKey: process.env.DEEPSEEK_API_KEY?.trim(),
+    baseUrl: (process.env.DEEPSEEK_BASE_URL?.trim() || "https://api.deepseek.com").replace(/\/$/, ""),
+    model: process.env.PLANNER_EXPLANATION_MODEL?.trim() || "deepseek-v4-flash"
+  };
+}
+
+function fallbackWithNotice(template: PlannerAdvisorExplanation, message: string) {
+  return {
+    ...template,
+    guardrails: Array.from(new Set([...template.guardrails, message]))
+  };
+}
+
+async function callDeepSeekAdvisorExplanation(
+  input: PlannerExplanationInput,
+  template: PlannerAdvisorExplanation
+): Promise<PlannerAdvisorExplanation> {
+  const config = deepseekConfig();
+  if (!config.apiKey) {
+    return fallbackWithNotice(template, "DeepSeek API key 未配置，当前使用模板解释。");
+  }
+
+  const prompt = buildPlannerAiPrompt(input);
+  try {
+    const response = await fetch(`${config.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: [
+          { role: "system", content: prompt.system },
+          { role: "user", content: prompt.user }
+        ],
+        temperature: 0.3,
+        response_format: { type: "json_object" }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      return fallbackWithNotice(
+        template,
+        `DeepSeek 解释生成失败，已回退模板：HTTP ${response.status}${errorText ? ` ${errorText.slice(0, 120)}` : ""}`
+      );
+    }
+
+    const payload = await response.json();
+    const content = payload?.choices?.[0]?.message?.content;
+    if (typeof content !== "string") {
+      return fallbackWithNotice(template, "DeepSeek 返回内容为空，当前使用模板解释。");
+    }
+
+    const parsedJson = JSON.parse(content);
+    const parsed = deepseekExplanationSchema.safeParse(parsedJson);
+    if (!parsed.success) {
+      return fallbackWithNotice(template, "DeepSeek 返回结构未通过校验，当前使用模板解释。");
+    }
+
+    return {
+      ...parsed.data,
+      mode: "deepseek",
+      guardrails: Array.from(
+        new Set([
+          ...parsed.data.guardrails,
+          "DeepSeek 只参与解释表达，活动排序、案例排序和事实字段仍由系统规则控制。"
+        ])
+      )
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "未知错误";
+    return fallbackWithNotice(template, `DeepSeek 解释生成异常，已回退模板：${message}`);
+  }
+}
+
+export async function buildPlannerAdvisorExplanationWithProvider(
+  input: PlannerExplanationInput
+): Promise<PlannerAdvisorExplanation> {
+  const template = buildPlannerAdvisorExplanation(input);
+  const provider = process.env.PLANNER_EXPLANATION_PROVIDER?.trim().toLowerCase() || "template";
+
+  if (provider !== "deepseek") {
+    return template;
+  }
+
+  return callDeepSeekAdvisorExplanation(input, template);
 }

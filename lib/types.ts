@@ -169,7 +169,7 @@ export type PlannerSourceContext = {
   description?: string;
 };
 
-export type PlannerExplanationMode = "rules" | "ai_ready";
+export type PlannerExplanationMode = "rules" | "ai_ready" | "deepseek";
 
 export type PlannerAdvisorExplanation = {
   mode: PlannerExplanationMode;

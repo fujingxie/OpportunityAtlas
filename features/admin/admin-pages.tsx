@@ -416,6 +416,21 @@ function statusTone(status: string): "default" | "blue" | "green" | "amber" | "r
   return "amber";
 }
 
+function recordStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    all: "全部",
+    draft: "草稿",
+    published: "已发布",
+    archived: "已归档",
+    pending_review: "待审核",
+    rejected: "已拒绝",
+    needs_review: "待补全",
+    enabled: "已启用",
+    disabled: "已停用"
+  };
+  return labels[status] ?? status;
+}
+
 function qualityTone(level: ImportQualitySummary["level"]): "default" | "blue" | "green" | "amber" | "red" {
   if (level === "error") {
     return "red";
@@ -756,19 +771,30 @@ export function AdminImportPage() {
         eyebrow="Admin"
         title="文档录入"
       />
+      <AdminMetricStrip
+        items={[
+          { label: "上传任务", value: `${jobs.length}` },
+          { label: "已解析条目", value: `${parsedCount}` },
+          { label: "已发布任务", value: `${jobs.filter((job) => job.status === "published").length}` },
+          { label: "当前预览", value: `${selectedItems.length}` }
+        ]}
+      />
       <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
-        <Card>
-          <div className="rounded-md border border-dashed border-border bg-soft p-8 text-center">
-            <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-primary">
-              Upload Zone
-            </p>
-            <h2 className="mt-2 text-xl font-extrabold tracking-normal text-ink">
-              拖拽 Word / PDF / Excel 文件开始录入
-            </h2>
-            <p className="mt-2 text-sm leading-7 text-secondary">
-              当前一期支持 DOCX 解析，PDF / XLSX / CSV 会返回不支持类型。
-            </p>
-            <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <Card className="overflow-hidden rounded-md p-0">
+          <div className="border-b border-border bg-surface px-5 py-4">
+            <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">
+                  Upload
+                </p>
+                <h2 className="mt-1 text-lg font-black tracking-normal text-ink">
+                  上传 DOCX 并解析为结构化草稿
+                </h2>
+                <p className="mt-1 text-sm font-bold leading-6 text-secondary">
+                  PDF / XLSX / CSV 先返回不支持类型，上传不会自动发布。
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <select
                 className="min-h-11 rounded-sm border border-border bg-surface px-3 text-sm font-black text-ink"
                 onChange={(event) => setSourceType(event.target.value as UploadSourceType)}
@@ -791,14 +817,31 @@ export function AdminImportPage() {
               >
                 {uploading ? "上传中" : "上传解析"}
               </button>
+              </div>
             </div>
             {actionMessage ? (
-              <p className="mt-4 text-sm font-bold text-secondary">{actionMessage}</p>
+              <p className="mt-4 rounded-sm border border-border bg-soft px-3 py-2 text-sm font-bold text-secondary">
+                {actionMessage}
+              </p>
             ) : null}
           </div>
 
-          <div className="mt-6">
-            <h2 className="text-lg font-extrabold tracking-normal text-ink">上传队列</h2>
+          <div className="px-5 py-5">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-extrabold tracking-normal text-ink">上传队列</h2>
+                <p className="mt-1 text-sm font-bold text-secondary">
+                  共 {jobs.length} 个任务，点击查看预览后在右侧编辑字段。
+                </p>
+              </div>
+              <button
+                className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+                onClick={() => void reload()}
+                type="button"
+              >
+                刷新队列
+              </button>
+            </div>
             <div className="mt-4 space-y-3">
               {loading ? <p className="text-sm font-bold text-secondary">加载上传队列中...</p> : null}
               {error ? <p className="text-sm font-bold text-danger">{error}</p> : null}
@@ -806,7 +849,11 @@ export function AdminImportPage() {
                 const stats = qualityStats(job.items);
                 return (
                 <div
-                  className="rounded-sm border border-border bg-soft p-4"
+                  className={`rounded-sm border p-4 ${
+                    selectedJob?.id === job.id
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-soft"
+                  }`}
                   key={job.id}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -816,7 +863,7 @@ export function AdminImportPage() {
                         {job.fileType} / {Math.round(job.fileSize / 1024)} KB / {job.sourceType}
                       </p>
                     </div>
-                    <Badge tone={statusTone(job.status)}>{job.status}</Badge>
+                    <Badge tone={statusTone(job.status)}>{recordStatusLabel(job.status)}</Badge>
                   </div>
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface">
                     <div
@@ -1017,8 +1064,49 @@ export function AdminProgramsPage() {
   const [savingProgram, setSavingProgram] = useState(false);
   const [programMessage, setProgramMessage] = useState("");
   const [selectedProgramIds, setSelectedProgramIds] = useState<string[]>([]);
+  const [programSearch, setProgramSearch] = useState("");
+  const [programStatusFilter, setProgramStatusFilter] = useState("all");
   const selectedProgram = programs.find((program) => program.id === selectedProgramId);
+  const filteredPrograms = useMemo(() => {
+    const query = programSearch.trim().toLowerCase();
+    return programs.filter((program) => {
+      const statusMatch =
+        programStatusFilter === "all" ||
+        (programStatusFilter === "needs_review"
+          ? program.completeness < 80
+          : program.status === programStatusFilter);
+      if (!statusMatch) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      return [
+        program.name,
+        program.type,
+        program.organization,
+        program.gradeRange,
+        program.subjectArea,
+        program.location,
+        program.status,
+        ...program.tags
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [programSearch, programStatusFilter, programs]);
+  const programStatusTabs = [
+    { label: "全部", value: "all", count: programs.length },
+    { label: "草稿", value: "draft", count: programs.filter((program) => program.status === "draft").length },
+    { label: "已发布", value: "published", count: programs.filter((program) => program.status === "published").length },
+    { label: "待补全", value: "needs_review", count: programs.filter((program) => program.completeness < 80).length },
+    { label: "已归档", value: "archived", count: programs.filter((program) => program.status === "archived").length }
+  ];
   const selectableProgramIds = programs
+    .filter((program) => program.status !== "archived")
+    .map((program) => program.id);
+  const visibleSelectableProgramIds = filteredPrograms
     .filter((program) => program.status !== "archived")
     .map((program) => program.id);
 
@@ -1159,25 +1247,42 @@ export function AdminProgramsPage() {
         }
         title="活动管理"
       />
-      <Card>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-extrabold tracking-normal text-ink">活动列表</h2>
-              <p className="mt-1 text-sm font-bold text-secondary">
-                共 {programs.length} 条活动 / 已选 {selectedProgramIds.length}
-              </p>
-            </div>
+      <AdminMetricStrip
+        items={[
+          { label: "活动总数", value: `${programs.length}` },
+          { label: "已发布", value: `${programs.filter((program) => program.status === "published").length}` },
+          { label: "待补全", value: `${programs.filter((program) => program.completeness < 80).length}` },
+          { label: "当前筛选", value: `${filteredPrograms.length}` }
+        ]}
+      />
+      <Card className="overflow-hidden rounded-md p-0">
+          <AdminListToolbar
+            count={filteredPrograms.length}
+            description="点击活动名称或编辑按钮打开右侧维护抽屉。"
+            searchPlaceholder="搜索名称、主办方、学科、地点或标签"
+            searchValue={programSearch}
+            selectedCount={selectedProgramIds.length}
+            title="活动列表"
+            onSearchChange={setProgramSearch}
+          >
+            <AdminStatusTabs
+              onChange={setProgramStatusFilter}
+              options={programStatusTabs}
+              value={programStatusFilter}
+            />
             <div className="flex flex-wrap gap-2">
               <button
                 className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
                 onClick={() =>
                   setSelectedProgramIds(
-                    selectedProgramIds.length === selectableProgramIds.length ? [] : selectableProgramIds
+                    selectedProgramIds.length === visibleSelectableProgramIds.length
+                      ? []
+                      : visibleSelectableProgramIds
                   )
                 }
                 type="button"
               >
-                {selectedProgramIds.length === selectableProgramIds.length ? "取消全选" : "全选"}
+                {selectedProgramIds.length === visibleSelectableProgramIds.length ? "取消全选" : "全选当前"}
               </button>
               <button
                 className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50"
@@ -1195,17 +1300,17 @@ export function AdminProgramsPage() {
                 刷新
               </button>
             </div>
-          </div>
+          </AdminListToolbar>
           {loading ? <p className="mt-4 text-sm font-bold text-secondary">加载活动列表中...</p> : null}
           {error ? <p className="mt-4 text-sm font-bold text-danger">{error}</p> : null}
           {programMessage ? (
-            <p className="mt-4 text-sm font-bold text-secondary">{programMessage}</p>
+            <p className="mx-5 mt-4 rounded-sm border border-border bg-soft px-3 py-2 text-sm font-bold text-secondary">{programMessage}</p>
           ) : null}
           {!loading && !error ? (
-            <div className="mt-4">
+            <div>
               <DataTable
-                headers={["选择", "活动名称", "类型", "形式", "完整度", "状态", "操作"]}
-                rows={programs.map((program) => [
+                headers={["选择", "活动名称", "类型", "年级/方向", "形式", "完整度", "状态", "操作"]}
+                rows={filteredPrograms.map((program) => [
                   <input
                     checked={selectedProgramIds.includes(program.id)}
                     className="h-4 w-4 accent-primary"
@@ -1227,10 +1332,11 @@ export function AdminProgramsPage() {
                     {program.name}
                   </button>,
                   program.type,
+                  `${program.gradeRange || "待补"} / ${program.subjectArea || "待补"}`,
                   program.format,
                   `${program.completeness}%`,
                   <Badge key={`status-${program.id}`} tone={statusTone(program.status)}>
-                    {program.status}
+                    {recordStatusLabel(program.status)}
                   </Badge>,
                   <div className="flex flex-wrap gap-2" key={`actions-${program.id}`}>
                     <button
@@ -1302,8 +1408,51 @@ export function AdminCasesPage() {
   const [savingCase, setSavingCase] = useState(false);
   const [caseMessage, setCaseMessage] = useState("");
   const [selectedCaseIds, setSelectedCaseIds] = useState<string[]>([]);
+  const [caseSearch, setCaseSearch] = useState("");
+  const [caseStatusFilter, setCaseStatusFilter] = useState("all");
   const selectedCase = cases.find((studentCase) => studentCase.id === selectedCaseId);
+  const filteredCases = useMemo(() => {
+    const query = caseSearch.trim().toLowerCase();
+    return cases.filter((studentCase) => {
+      const statusMatch =
+        caseStatusFilter === "all" ||
+        (caseStatusFilter === "needs_review"
+          ? studentCase.completeness < 80
+          : studentCase.status === caseStatusFilter);
+      if (!statusMatch) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      return [
+        studentCase.anonymousCode,
+        studentCase.grade,
+        studentCase.schoolType,
+        studentCase.gpaRange,
+        studentCase.intendedMajor,
+        studentCase.resultSummary,
+        studentCase.resultTier,
+        studentCase.status,
+        ...studentCase.tags,
+        ...studentCase.activityExperience.map((activity) => activity.programName)
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [caseSearch, caseStatusFilter, cases]);
+  const caseStatusTabs = [
+    { label: "全部", value: "all", count: cases.length },
+    { label: "草稿", value: "draft", count: cases.filter((studentCase) => studentCase.status === "draft").length },
+    { label: "已发布", value: "published", count: cases.filter((studentCase) => studentCase.status === "published").length },
+    { label: "待补全", value: "needs_review", count: cases.filter((studentCase) => studentCase.completeness < 80).length },
+    { label: "已归档", value: "archived", count: cases.filter((studentCase) => studentCase.status === "archived").length }
+  ];
   const selectableCaseIds = cases
+    .filter((studentCase) => studentCase.status !== "archived")
+    .map((studentCase) => studentCase.id);
+  const visibleSelectableCaseIds = filteredCases
     .filter((studentCase) => studentCase.status !== "archived")
     .map((studentCase) => studentCase.id);
 
@@ -1446,23 +1595,42 @@ export function AdminCasesPage() {
         }
         title="案例管理"
       />
-      <Card>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-extrabold tracking-normal text-ink">案例列表</h2>
-              <p className="mt-1 text-sm font-bold text-secondary">
-                共 {cases.length} 条案例 / 已选 {selectedCaseIds.length}
-              </p>
-            </div>
+      <AdminMetricStrip
+        items={[
+          { label: "案例总数", value: `${cases.length}` },
+          { label: "已发布", value: `${cases.filter((studentCase) => studentCase.status === "published").length}` },
+          { label: "平均活动数", value: `${averageCaseActivities(cases)}` },
+          { label: "当前筛选", value: `${filteredCases.length}` }
+        ]}
+      />
+      <Card className="overflow-hidden rounded-md p-0">
+          <AdminListToolbar
+            count={filteredCases.length}
+            description="按匿名编号、申请方向、结果或活动经历快速定位案例。"
+            searchPlaceholder="搜索案例 ID、方向、结果、活动或标签"
+            searchValue={caseSearch}
+            selectedCount={selectedCaseIds.length}
+            title="案例列表"
+            onSearchChange={setCaseSearch}
+          >
+            <AdminStatusTabs
+              onChange={setCaseStatusFilter}
+              options={caseStatusTabs}
+              value={caseStatusFilter}
+            />
             <div className="flex flex-wrap gap-2">
               <button
                 className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
                 onClick={() =>
-                  setSelectedCaseIds(selectedCaseIds.length === selectableCaseIds.length ? [] : selectableCaseIds)
+                  setSelectedCaseIds(
+                    selectedCaseIds.length === visibleSelectableCaseIds.length
+                      ? []
+                      : visibleSelectableCaseIds
+                  )
                 }
                 type="button"
               >
-                {selectedCaseIds.length === selectableCaseIds.length ? "取消全选" : "全选"}
+                {selectedCaseIds.length === visibleSelectableCaseIds.length ? "取消全选" : "全选当前"}
               </button>
               <button
                 className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50"
@@ -1480,17 +1648,17 @@ export function AdminCasesPage() {
                 刷新
               </button>
             </div>
-          </div>
+          </AdminListToolbar>
           {loading ? <p className="mt-4 text-sm font-bold text-secondary">加载案例列表中...</p> : null}
           {error ? <p className="mt-4 text-sm font-bold text-danger">{error}</p> : null}
           {caseMessage ? (
-            <p className="mt-4 text-sm font-bold text-secondary">{caseMessage}</p>
+            <p className="mx-5 mt-4 rounded-sm border border-border bg-soft px-3 py-2 text-sm font-bold text-secondary">{caseMessage}</p>
           ) : null}
           {!loading && !error ? (
-            <div className="mt-4">
+            <div>
               <DataTable
-                headers={["选择", "案例 ID", "背景", "申请方向", "活动数", "状态", "操作"]}
-                rows={cases.map((studentCase) => [
+                headers={["选择", "案例 ID", "背景", "申请方向", "结果等级", "活动数", "状态", "操作"]}
+                rows={filteredCases.map((studentCase) => [
                   <input
                     checked={selectedCaseIds.includes(studentCase.id)}
                     className="h-4 w-4 accent-primary"
@@ -1513,9 +1681,10 @@ export function AdminCasesPage() {
                   </button>,
                   `${studentCase.grade} / ${studentCase.schoolType} / ${studentCase.gpaRange}`,
                   studentCase.intendedMajor,
+                  studentCase.resultTier || "待补",
                   `${studentCase.activityExperience.length}`,
                   <Badge key={`status-${studentCase.id}`} tone={statusTone(studentCase.status)}>
-                    {studentCase.status}
+                    {recordStatusLabel(studentCase.status)}
                   </Badge>,
                   <div className="flex flex-wrap gap-2" key={`actions-${studentCase.id}`}>
                     <button
@@ -1747,21 +1916,34 @@ export function AdminRelationsPage() {
         }
         title="关联管理"
       />
-      <Card>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-extrabold tracking-normal text-ink">已建立关联</h2>
-              <p className="mt-1 text-sm font-bold text-secondary">
-                共 {relations.length} 条关联 / 当前显示 {filteredRelations.length}
-              </p>
+      <AdminMetricStrip
+        items={[
+          { label: "关联总数", value: `${relations.length}` },
+          { label: "活动数量", value: `${activePrograms.length}` },
+          { label: "案例数量", value: `${activeCases.length}` },
+          { label: "当前筛选", value: `${filteredRelations.length}` }
+        ]}
+      />
+      <Card className="overflow-hidden rounded-md p-0">
+          <AdminListToolbar
+            count={filteredRelations.length}
+            description="从活动或案例入口都能反查关联路径。"
+            searchPlaceholder="搜索活动、案例或关联理由"
+            searchValue={relationSearch}
+            selectedCount={0}
+            title="已建立关联"
+            onSearchChange={setRelationSearch}
+          >
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+                onClick={() => void reloadAllRelationData()}
+                type="button"
+              >
+                刷新数据
+              </button>
             </div>
-            <input
-              className="min-h-10 w-full rounded-sm border border-border bg-surface px-3 text-sm font-bold text-ink outline-none focus:border-primary sm:w-[260px]"
-              onChange={(event) => setRelationSearch(event.target.value)}
-              placeholder="搜索活动、案例或理由"
-              value={relationSearch}
-            />
-          </div>
+          </AdminListToolbar>
           {relationsLoading ? (
             <p className="mt-4 text-sm font-bold text-secondary">加载关联数据中...</p>
           ) : null}
@@ -1769,10 +1951,10 @@ export function AdminRelationsPage() {
             <p className="mt-4 text-sm font-bold text-danger">{relationsError}</p>
           ) : null}
           {relationMessage ? (
-            <p className="mt-4 text-sm font-bold text-secondary">{relationMessage}</p>
+            <p className="mx-5 mt-4 rounded-sm border border-border bg-soft px-3 py-2 text-sm font-bold text-secondary">{relationMessage}</p>
           ) : null}
           {!relationsLoading && !relationsError ? (
-            <div className="mt-4">
+            <div>
               <DataTable
                 headers={["活动", "案例", "关系", "理由", "操作"]}
                 rows={filteredRelations.map((relation) => [
@@ -1896,8 +2078,36 @@ export function AdminTagsPage() {
   const [savingTag, setSavingTag] = useState(false);
   const [tagMessage, setTagMessage] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [tagSearch, setTagSearch] = useState("");
+  const [tagGroupFilter, setTagGroupFilter] = useState("all");
+  const [tagStateFilter, setTagStateFilter] = useState("all");
   const selectedTag = tags.find((tag) => tag.id === selectedTagId);
+  const filteredTags = useMemo(() => {
+    const query = tagSearch.trim().toLowerCase();
+    return tags.filter((tag) => {
+      const groupMatch = tagGroupFilter === "all" || tag.group === tagGroupFilter;
+      const stateMatch =
+        tagStateFilter === "all" ||
+        (tagStateFilter === "enabled" ? tag.enabled : !tag.enabled);
+      if (!groupMatch || !stateMatch) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      return [tag.name, tag.group, tagGroupLabel(tag.group)]
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [tagGroupFilter, tagSearch, tagStateFilter, tags]);
+  const tagStateTabs = [
+    { label: "全部", value: "all", count: tags.length },
+    { label: "已启用", value: "enabled", count: tags.filter((tag) => tag.enabled).length },
+    { label: "已停用", value: "disabled", count: tags.filter((tag) => !tag.enabled).length }
+  ];
   const selectableTagIds = tags.filter((tag) => tag.enabled).map((tag) => tag.id);
+  const visibleSelectableTagIds = filteredTags.filter((tag) => tag.enabled).map((tag) => tag.id);
 
   const startCreateTag = () => {
     setMode("create");
@@ -2070,23 +2280,54 @@ export function AdminTagsPage() {
         }
         title="标签管理"
       />
-      <Card>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-extrabold tracking-normal text-ink">标签列表</h2>
-              <p className="mt-1 text-sm font-bold text-secondary">
-                共 {tags.length} 个标签 / 已选 {selectedTagIds.length}
-              </p>
-            </div>
+      <AdminMetricStrip
+        items={[
+          { label: "标签总数", value: `${tags.length}` },
+          { label: "已启用", value: `${tags.filter((tag) => tag.enabled).length}` },
+          { label: "分组数量", value: `${new Set(tags.map((tag) => tag.group)).size}` },
+          { label: "当前筛选", value: `${filteredTags.length}` }
+        ]}
+      />
+      <Card className="overflow-hidden rounded-md p-0">
+          <AdminListToolbar
+            count={filteredTags.length}
+            description="按分组维护活动库和案例库使用的基础筛选字典。"
+            searchPlaceholder="搜索标签名称或分组"
+            searchValue={tagSearch}
+            selectedCount={selectedTagIds.length}
+            title="标签列表"
+            onSearchChange={setTagSearch}
+          >
+            <AdminStatusTabs
+              onChange={setTagStateFilter}
+              options={tagStateTabs}
+              value={tagStateFilter}
+            />
             <div className="flex flex-wrap gap-2">
+              <select
+                className="min-h-9 rounded-sm border border-border bg-surface px-3 text-xs font-black text-ink outline-none focus:border-primary"
+                onChange={(event) => setTagGroupFilter(event.target.value)}
+                value={tagGroupFilter}
+              >
+                <option value="all">全部分组</option>
+                {tagGroupOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
               <button
                 className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
                 onClick={() =>
-                  setSelectedTagIds(selectedTagIds.length === selectableTagIds.length ? [] : selectableTagIds)
+                  setSelectedTagIds(
+                    selectedTagIds.length === visibleSelectableTagIds.length
+                      ? []
+                      : visibleSelectableTagIds
+                  )
                 }
                 type="button"
               >
-                {selectedTagIds.length === selectableTagIds.length ? "取消全选" : "全选"}
+                {selectedTagIds.length === visibleSelectableTagIds.length ? "取消全选" : "全选当前"}
               </button>
               <button
                 className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50"
@@ -2104,53 +2345,51 @@ export function AdminTagsPage() {
                 刷新
               </button>
             </div>
-          </div>
+          </AdminListToolbar>
           {loading ? <p className="mt-4 text-sm font-bold text-secondary">加载标签中...</p> : null}
           {error ? <p className="mt-4 text-sm font-bold text-danger">{error}</p> : null}
           {tagMessage ? (
-            <p className="mt-4 text-sm font-bold text-secondary">{tagMessage}</p>
+            <p className="mx-5 mt-4 rounded-sm border border-border bg-soft px-3 py-2 text-sm font-bold text-secondary">{tagMessage}</p>
           ) : null}
           {!loading && !error ? (
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {tags.map((tag) => (
-                <div
-                  className={`rounded-sm border p-4 text-left transition ${
-                    tag.id === selectedTagId
-                      ? "border-primary bg-primary/10"
-                      : "border-border bg-soft hover:border-primary"
-                  }`}
-                  key={tag.id}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <label className="pt-1">
-                      <input
-                        checked={selectedTagIds.includes(tag.id)}
-                        className="h-4 w-4 accent-primary"
-                        disabled={!tag.enabled}
-                        onChange={(event) =>
-                          setSelectedTagIds((current) =>
-                            updateSelection(current, tag.id, event.target.checked)
-                          )
-                        }
-                        type="checkbox"
-                      />
-                    </label>
-                    <button
-                      className="min-w-0 flex-1 text-left"
-                      onClick={() => startEditTag(tag)}
-                      type="button"
-                    >
-                      <span className="block truncate font-extrabold text-ink">{tag.name}</span>
-                      <span className="mt-1 block text-sm font-bold text-secondary">
-                        {tagGroupLabel(tag.group)}
-                      </span>
-                    </button>
-                    <Badge tone={tag.enabled ? "green" : "amber"}>
-                      {tag.enabled ? "enabled" : "disabled"}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+            <div>
+              <DataTable
+                headers={["选择", "标签名称", "分组", "状态", "操作"]}
+                rows={filteredTags.map((tag) => [
+                  <input
+                    checked={selectedTagIds.includes(tag.id)}
+                    className="h-4 w-4 accent-primary"
+                    disabled={!tag.enabled}
+                    key={`select-${tag.id}`}
+                    onChange={(event) =>
+                      setSelectedTagIds((current) =>
+                        updateSelection(current, tag.id, event.target.checked)
+                      )
+                    }
+                    type="checkbox"
+                  />,
+                  <button
+                    className="text-left font-extrabold text-ink hover:text-primary"
+                    key={`edit-${tag.id}`}
+                    onClick={() => startEditTag(tag)}
+                    type="button"
+                  >
+                    {tag.name}
+                  </button>,
+                  tagGroupLabel(tag.group),
+                  <Badge key={`status-${tag.id}`} tone={tag.enabled ? "green" : "amber"}>
+                    {tag.enabled ? "已启用" : "已停用"}
+                  </Badge>,
+                  <button
+                    className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
+                    key={`action-${tag.id}`}
+                    onClick={() => startEditTag(tag)}
+                    type="button"
+                  >
+                    编辑
+                  </button>
+                ])}
+              />
             </div>
           ) : null}
       </Card>
@@ -2256,7 +2495,7 @@ function AdminModal({
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-50 overflow-y-auto bg-ink/45 px-4 py-6 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex justify-end bg-ink/45 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
@@ -2264,30 +2503,134 @@ function AdminModal({
       }}
       role="dialog"
     >
-      <div className="mx-auto w-full max-w-3xl rounded-lg border border-border bg-surface p-6 shadow-2xl">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4">
-          <div>
-            <h2 className="text-2xl font-black tracking-normal text-ink">{title}</h2>
+      <div className="flex h-full w-full max-w-[760px] flex-col border-l border-border bg-surface shadow-2xl">
+        <div className="shrink-0 border-b border-border px-6 py-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+            <h2 className="text-2xl font-black leading-tight tracking-normal text-ink">{title}</h2>
             {description ? (
               <p className="mt-2 text-sm font-bold leading-7 text-secondary">{description}</p>
             ) : null}
-          </div>
-          <div className="flex items-center gap-2">
-            {badge}
-            <button
-              aria-label="关闭弹窗"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-sm border border-border bg-surface text-lg font-black text-secondary hover:border-primary hover:text-primary"
-              onClick={onClose}
-              type="button"
-            >
-              ×
-            </button>
+            </div>
+            <div className="flex items-center gap-2">
+              {badge}
+              <button
+                aria-label="关闭弹窗"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-sm border border-border bg-surface text-lg font-black text-secondary hover:border-primary hover:text-primary"
+                onClick={onClose}
+                type="button"
+              >
+                ×
+              </button>
+            </div>
           </div>
         </div>
-        <div className="mt-5">{children}</div>
+        <div className="scroll-pane min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
       </div>
     </div>
   );
+}
+
+function AdminMetricStrip({
+  items
+}: {
+  items: Array<{ label: string; value: string }>;
+}) {
+  return (
+    <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {items.map((item) => (
+        <div
+          className="rounded-md border border-border bg-surface px-4 py-3 shadow-card"
+          key={item.label}
+        >
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-muted">{item.label}</p>
+          <p className="mt-2 text-2xl font-black leading-none text-ink">{item.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AdminListToolbar({
+  title,
+  description,
+  count,
+  selectedCount,
+  searchValue,
+  searchPlaceholder,
+  onSearchChange,
+  children
+}: {
+  title: string;
+  description: string;
+  count: number;
+  selectedCount: number;
+  searchValue: string;
+  searchPlaceholder: string;
+  onSearchChange: (value: string) => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="border-b border-border bg-surface px-5 py-4">
+      <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
+        <div className="min-w-0">
+          <h2 className="text-lg font-black tracking-normal text-ink">{title}</h2>
+          <p className="mt-1 text-sm font-bold leading-6 text-secondary">
+            当前 {count} 条 / 已选 {selectedCount}。{description}
+          </p>
+        </div>
+        <input
+          className="min-h-10 w-full rounded-sm border border-border bg-soft px-3 text-sm font-bold text-ink outline-none placeholder:text-muted focus:border-primary xl:w-[360px]"
+          onChange={(event) => onSearchChange(event.target.value)}
+          placeholder={searchPlaceholder}
+          value={searchValue}
+        />
+      </div>
+      <div className="mt-4 flex flex-col justify-between gap-3 xl:flex-row xl:items-center">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function AdminStatusTabs({
+  options,
+  value,
+  onChange
+}: {
+  options: Array<{ label: string; value: string; count: number }>;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => {
+        const active = value === option.value;
+        return (
+          <button
+            className={`rounded-full border px-3 py-1.5 text-xs font-black ${
+              active
+                ? "border-primary bg-primary text-white"
+                : "border-border bg-soft text-secondary hover:border-primary hover:text-primary"
+            }`}
+            key={option.value}
+            onClick={() => onChange(option.value)}
+            type="button"
+          >
+            {option.label} {option.count}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function averageCaseActivities(cases: StudentCase[]) {
+  if (!cases.length) {
+    return "0";
+  }
+  const total = cases.reduce((sum, studentCase) => sum + studentCase.activityExperience.length, 0);
+  return (total / cases.length).toFixed(1);
 }
 
 function AdminStat({ label, value }: { label: string; value: string }) {
@@ -2646,13 +2989,13 @@ function DataTable({
   rows: Array<Array<ReactNode>>;
 }) {
   return (
-    <div className="table-scroll">
-      <table className="min-w-[760px] w-full border-collapse text-left">
+    <div className="table-scroll bg-surface">
+      <table className="min-w-[860px] w-full border-collapse text-left">
         <thead>
-          <tr className="border-b border-border">
+          <tr className="sticky top-0 z-10 border-b border-border bg-soft">
             {headers.map((header) => (
               <th
-                className="px-3 py-3 text-xs font-extrabold uppercase tracking-[0.16em] text-muted"
+                className="px-4 py-3 text-xs font-extrabold uppercase tracking-[0.14em] text-muted"
                 key={header}
               >
                 {header}
@@ -2662,10 +3005,13 @@ function DataTable({
         </thead>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <tr className="border-b border-border last:border-b-0" key={rowIndex}>
+            <tr
+              className="border-b border-border transition last:border-b-0 hover:bg-soft/70"
+              key={rowIndex}
+            >
               {row.map((cell, cellIndex) => (
                 <td
-                  className="max-w-[320px] px-3 py-4 text-sm font-bold leading-6 text-secondary"
+                  className="max-w-[340px] px-4 py-3 text-sm font-bold leading-6 text-secondary"
                   key={cellIndex}
                 >
                   {cell}

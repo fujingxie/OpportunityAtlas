@@ -796,7 +796,7 @@ export function AdminImportPage() {
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <select
-                className="min-h-11 rounded-sm border border-border bg-surface px-3 text-sm font-black text-ink"
+                className="min-h-11 shrink-0 whitespace-nowrap rounded-sm border border-border bg-surface px-3 text-sm font-black text-ink"
                 onChange={(event) => setSourceType(event.target.value as UploadSourceType)}
                 value={sourceType}
               >
@@ -805,12 +805,12 @@ export function AdminImportPage() {
               </select>
               <input
                 accept=".docx"
-                className="max-w-[280px] rounded-sm border border-border bg-surface px-3 py-3 text-sm font-bold text-secondary"
+                className="w-full min-w-0 rounded-sm border border-border bg-surface px-3 py-3 text-sm font-bold text-secondary sm:w-[280px] sm:shrink-0"
                 onChange={handleFileChange}
                 type="file"
               />
               <button
-                className="min-h-11 rounded-sm bg-primary px-5 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-11 min-w-[92px] shrink-0 items-center justify-center whitespace-nowrap rounded-sm bg-primary px-5 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={uploading}
                 onClick={() => void uploadFile()}
                 type="button"
@@ -2608,9 +2608,9 @@ function AdminStatusTabs({
         const active = value === option.value;
         return (
           <button
-            className={`rounded-full border px-3 py-1.5 text-xs font-black ${
+            className={`inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-full border px-3 text-xs font-black ${
               active
-                ? "border-primary bg-primary text-white"
+                ? "border-primary bg-primary/10 text-primary"
                 : "border-border bg-soft text-secondary hover:border-primary hover:text-primary"
             }`}
             key={option.value}

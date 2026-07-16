@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { cx } from "@/lib/utils";
 
@@ -18,6 +18,11 @@ const adminNav = [
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const contentRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0 });
+  }, [pathname]);
 
   return (
     <main className="h-[calc(100vh-76px)] overflow-hidden border-t border-border bg-soft">
@@ -40,13 +45,18 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   <Link
                     aria-current={active ? "page" : undefined}
                     className={cx(
-                      "group flex min-h-[54px] items-center rounded-md px-3 text-sm font-black text-white/70 hover:bg-white/10 hover:text-white",
-                      active && "bg-white text-navy shadow-card hover:bg-white hover:text-navy"
+                      "group flex min-h-[54px] items-center rounded-md border border-transparent px-3 text-sm font-black text-white/70 hover:bg-white/10 hover:text-white",
+                      active && "border-primary/45 bg-primary/20 text-white shadow-none hover:bg-primary/25 hover:text-white"
                     )}
                     href={item.href}
                     key={item.href}
                   >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-white/10 text-xs font-black group-hover:bg-white/15">
+                    <span
+                      className={cx(
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-white/10 text-xs font-black group-hover:bg-white/15",
+                        active && "bg-primary text-white group-hover:bg-primary"
+                      )}
+                    >
                       {item.label.slice(0, 1)}
                     </span>
                     <span className="ml-3 min-w-0">
@@ -54,7 +64,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                       <span
                         className={cx(
                           "mt-0.5 block truncate text-xs font-bold",
-                          active ? "text-navy/55" : "text-white/45"
+                          active ? "text-white/65" : "text-white/45"
                         )}
                       >
                         {item.hint}
@@ -79,7 +89,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </div>
           ) : null}
         </aside>
-        <section className="scroll-pane min-w-0 overflow-y-auto px-5 py-6 lg:px-8 lg:py-7">
+        <section
+          className="scroll-pane min-w-0 overflow-y-auto px-5 py-7 lg:px-8 lg:py-9"
+          ref={contentRef}
+        >
           <div className="mx-auto max-w-[1280px]">{children}</div>
         </section>
       </div>

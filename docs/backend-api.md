@@ -326,6 +326,7 @@ type PlannerRecommendationResponse = {
 - 当前 `advisorExplanation.mode` 返回 `ai_ready`，表示解释层结构已按未来 AI 接入设计，但内容仍由服务端模板生成。
 - 设置 `PLANNER_EXPLANATION_PROVIDER=deepseek` 且配置 `DEEPSEEK_API_KEY` 后，服务端会调用 DeepSeek 生成顾问式解释；失败、超时、空结果或结构校验不通过时自动回退模板解释。
 - DeepSeek 默认配置：`DEEPSEEK_BASE_URL=https://api.deepseek.com`，`PLANNER_EXPLANATION_MODEL=deepseek-v4-flash`。
+- DeepSeek 请求使用 `response_format={ type: "json_object" }` 并关闭 thinking 模式，要求返回结构化 JSON。
 - 未来真实 AI 只允许改写 `advisorExplanation` 的表达，不直接改动活动排序、案例排序、事实字段和风险提示。
 - 活动官网、费用、日期、案例结果等事实字段必须来自数据库，不允许由 AI 编造。
 

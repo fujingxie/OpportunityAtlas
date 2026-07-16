@@ -99,7 +99,7 @@ export default function ProgramDetailPage({
                   program.officialUrl ? (
                     <a
                       className="text-primary underline-offset-4 hover:underline"
-                      href={program.officialUrl}
+                      href={externalProgramUrl(program.officialUrl)}
                       rel="noreferrer"
                       target="_blank"
                     >
@@ -138,6 +138,8 @@ export default function ProgramDetailPage({
               title="报名信息"
             />
           </section>
+
+          <ProgramFitCard program={program} />
 
           <Card className="rounded-[30px] p-7">
             <h2 className="text-2xl font-black tracking-normal text-ink">内容与亮点</h2>
@@ -191,6 +193,10 @@ export default function ProgramDetailPage({
   );
 }
 
+function externalProgramUrl(url: string) {
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
 function HeroMeta({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-white/15 bg-white/10 p-4">
@@ -200,6 +206,115 @@ function HeroMeta({ label, value }: { label: string; value: string }) {
       <dd className="mt-2 text-sm font-black text-white">{value}</dd>
     </div>
   );
+}
+
+function ProgramFitCard({ program }: { program: Program }) {
+  const fit = buildProgramFitInsight(program);
+
+  return (
+    <Card className="rounded-[30px] p-7">
+      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
+        <div>
+          <h2 className="text-2xl font-black tracking-normal text-ink">适合谁 / 不适合谁</h2>
+          <p className="mt-2 text-sm font-bold leading-7 text-secondary">
+            根据年级、方向、形式、费用和资料完整度做初步判断，最终仍以官网和顾问复核为准。
+          </p>
+        </div>
+        <Badge tone={program.completeness >= 80 ? "green" : "amber"}>
+          完整度 {program.completeness}%
+        </Badge>
+      </div>
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <FitList title="适合谁" items={fit.suitable} tone="success" />
+        <FitList title="不适合谁" items={fit.unsuitable} tone="warning" />
+      </div>
+      <div className="mt-4 rounded-md border border-border bg-soft p-5">
+        <h3 className="text-sm font-black text-primary">准备建议</h3>
+        <ul className="mt-3 grid gap-2 text-sm font-bold leading-6 text-secondary md:grid-cols-2">
+          {fit.preparation.map((item) => (
+            <li key={item}>- {item}</li>
+          ))}
+        </ul>
+      </div>
+    </Card>
+  );
+}
+
+function FitList({
+  title,
+  items,
+  tone
+}: {
+  title: string;
+  items: string[];
+  tone: "success" | "warning";
+}) {
+  const titleClass = tone === "success" ? "text-success" : "text-warning";
+
+  return (
+    <div className="rounded-md border border-border bg-soft p-5">
+      <h3 className={`text-base font-black ${titleClass}`}>{title}</h3>
+      <ul className="mt-3 space-y-2 text-sm font-bold leading-7 text-secondary">
+        {items.map((item) => (
+          <li key={item}>- {item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function buildProgramFitInsight(program: Program) {
+  const formatText = {
+    online: "线上",
+    offline: "线下",
+    hybrid: "混合"
+  }[program.format];
+  const typeText = {
+    Competition: "希望补充竞赛成绩或外部学术证明",
+    "Research Program": "希望形成科研、论文、展示或导师制项目产出",
+    "Summer School": "希望通过暑期课程确认专业兴趣和课堂适应度",
+    Other: "希望补充申请叙事中的活动证据"
+  }[program.type];
+
+  const suitable = [
+    `年级处在 ${program.gradeRange} 或相邻阶段，能配合活动窗口推进的学生。`,
+    `${program.subjectArea} 方向较明确，且${typeText}的学生。`,
+    `可以接受${formatText}形式，并能围绕活动产出做后续复盘的学生。`
+  ];
+
+  const unsuitable = [
+    `年级明显不在 ${program.gradeRange}，或短期无法确认官方适龄要求的学生。`,
+    program.format === "offline"
+      ? "无法安排线下交通、住宿、签证或校外行程的学生。"
+      : "希望获得强线下校园体验，但不接受线上/混合形式的学生。",
+    program.costText && !/免费|资助|奖学金|financial aid/i.test(program.costText)
+      ? "预算、奖学金或家庭投入尚未确认的学生。"
+      : "只想参加高投入项目，但无法说明活动如何服务申请主线的学生。"
+  ];
+
+  if (program.completeness < 80) {
+    unsuitable.push("需要高度确定报名时间、费用和官网信息，但当前资料仍待补全的学生。");
+  }
+  if (program.requirements) {
+    unsuitable.push(`暂时无法准备「${program.requirements}」相关材料或基础的学生。`);
+  }
+
+  const preparation = [
+    program.officialUrl ? "先打开官网核对最新报名要求、时间和费用。" : "先补充官网，再决定是否纳入路径。",
+    program.applicationEndDate
+      ? `倒排 ${program.applicationEndDate} 前的材料准备节奏。`
+      : "补齐报名截止时间，避免错过窗口。",
+    program.requiredMaterials?.length
+      ? `提前准备：${program.requiredMaterials.slice(0, 3).join("、")}。`
+      : "先整理成绩单、推荐人和个人活动记录。",
+    "参加后要沉淀可展示成果，用于案例路径复盘。"
+  ];
+
+  return {
+    suitable: suitable.slice(0, 4),
+    unsuitable: unsuitable.slice(0, 5),
+    preparation
+  };
 }
 
 function InfoCard({

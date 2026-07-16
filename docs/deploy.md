@@ -67,7 +67,7 @@ DEEPSEEK_BASE_URL="https://api.deepseek.com"
 DEEPSEEK_API_KEY="你的 DeepSeek API Key"
 ```
 
-DeepSeek 只改写规划解读文案；活动排序、案例排序、风险提示和事实字段仍由系统规则控制。DeepSeek 调用失败或返回结构不合法时会自动回退模板解释。
+DeepSeek 只改写规划解读文案；活动排序、案例排序、风险提示和事实字段仍由系统规则控制。当前请求会要求 JSON 输出并关闭 thinking 模式，减少非结构化内容进入结果页。DeepSeek 调用失败或返回结构不合法时会自动回退模板解释。
 
 生成 session secret 可用：
 

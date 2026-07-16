@@ -90,6 +90,8 @@ type PathPlannerProps = {
   sourceQuery?: string;
 };
 
+type ProfileUpdater = <K extends keyof PlannerProfile>(key: K, value: PlannerProfile[K]) => void;
+
 function cleanSource(value?: string) {
   const trimmed = value?.trim();
   return trimmed || undefined;
@@ -268,6 +270,7 @@ export function PathPlanner(props: PathPlannerProps = {}) {
           基于内部活动库和案例库生成推荐活动、相似案例和阶段路径。
         </p>
         {sourceContext ? <SourceContextCard context={sourceContext} /> : null}
+        <PlannerProfileSummaryCard profile={profile} />
 
         <div className="mt-6 grid grid-cols-3 gap-2">
           {[1, 2, 3].map((item) => (
@@ -321,6 +324,13 @@ export function PathPlanner(props: PathPlannerProps = {}) {
               description="这一步用于识别履历缺口，不要求全部填写。"
               title="2. 补充当前背景"
             >
+              <PlannerHint
+                items={[
+                  "没有经历可以直接点“暂无”，系统会把它识别为待补强项。",
+                  "如果只记得活动名，也可以先写活动名，后续再补奖项或产出。"
+                ]}
+              />
+              <ExperienceQuickFill onChange={updateProfile} profile={profile} />
               <TextField
                 label="标化 / 校内成绩"
                 onChange={(value) => updateProfile("standardizedScore", value)}
@@ -430,7 +440,7 @@ export function PathPlanner(props: PathPlannerProps = {}) {
               onClick={() => setStep((step + 1) as PlannerStep)}
               type="button"
             >
-              下一步
+              {step === 1 ? "下一步：补充背景" : "下一步：选择偏好"}
             </button>
           ) : (
             <button
@@ -487,6 +497,142 @@ export function PathPlanner(props: PathPlannerProps = {}) {
           </Card>
         )}
       </section>
+    </div>
+  );
+}
+
+function PlannerProfileSummaryCard({ profile }: { profile: PlannerProfile }) {
+  const intentLabel =
+    intentOptions.find((option) => option.value === profile.intent)?.label ?? "均衡规划";
+  const experienceItems = [
+    profile.competitions ? "竞赛已填" : "竞赛待补",
+    profile.summerSchools ? "夏校已填" : "夏校待补",
+    profile.research ? "科研已填" : "科研待补"
+  ];
+
+  return (
+    <div className="mt-5 rounded-md border border-border bg-soft p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-muted">当前画像</p>
+        <span className="rounded-full bg-surface px-2.5 py-1 text-xs font-black text-primary">
+          {intentLabel}
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black text-secondary">
+        <span>{profile.grade}</span>
+        <span>{profile.curriculum}</span>
+        <span>目标{profile.targetRegion}</span>
+        <span>{profile.subjectArea}</span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {experienceItems.map((item) => (
+          <span
+            className={cx(
+              "rounded-full border px-2.5 py-1 text-xs font-black",
+              item.includes("已填")
+                ? "border-success/20 bg-success/10 text-success"
+                : "border-warning/25 bg-warning/10 text-warning"
+            )}
+            key={item}
+          >
+            {item}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PlannerHint({ items }: { items: string[] }) {
+  return (
+    <div className="rounded-md border border-primary/15 bg-primary/5 p-4">
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">填写建议</p>
+      <ul className="mt-2 space-y-1 text-xs font-bold leading-5 text-secondary">
+        {items.map((item) => (
+          <li key={item}>- {item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ExperienceQuickFill({
+  profile,
+  onChange
+}: {
+  profile: PlannerProfile;
+  onChange: ProfileUpdater;
+}) {
+  return (
+    <div className="space-y-4 rounded-md border border-border bg-surface p-4">
+      <QuickFillGroup
+        label="竞赛经历"
+        onSelect={(value) => onChange("competitions", value)}
+        options={[
+          { label: "暂无", value: "暂无竞赛经历" },
+          { label: "基础", value: "校内竞赛或入门级竞赛" },
+          { label: "较强", value: "已参加 AMC / USABO / NEC 等竞赛并有成绩" }
+        ]}
+        value={profile.competitions ?? ""}
+      />
+      <QuickFillGroup
+        label="夏校经历"
+        onSelect={(value) => onChange("summerSchools", value)}
+        options={[
+          { label: "暂无", value: "暂无夏校经历" },
+          { label: "课程探索", value: "参加过线上或校内课程探索" },
+          { label: "高选择性", value: "参加过高选择性夏校或大学课程" }
+        ]}
+        value={profile.summerSchools ?? ""}
+      />
+      <QuickFillGroup
+        label="科研经历"
+        onSelect={(value) => onChange("research", value)}
+        options={[
+          { label: "暂无", value: "暂无科研经历" },
+          { label: "课题入门", value: "有校内课题或项目制学习" },
+          { label: "论文/展示", value: "已有论文、展示或导师制研究产出" }
+        ]}
+        value={profile.research ?? ""}
+      />
+    </div>
+  );
+}
+
+function QuickFillGroup({
+  label,
+  options,
+  value,
+  onSelect
+}: {
+  label: string;
+  options: Array<{ label: string; value: string }>;
+  value: string;
+  onSelect: (value: string) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-muted">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => {
+          const active = value === option.value;
+          return (
+            <button
+              className={cx(
+                "min-h-9 rounded-full border px-3 text-xs font-black",
+                active
+                  ? "border-primary bg-primary text-white"
+                  : "border-border bg-soft text-secondary hover:border-primary hover:text-primary"
+              )}
+              key={option.value}
+              onClick={() => onSelect(option.value)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -678,10 +824,14 @@ function PlannerResult({
             ))}
           </div>
         ) : null}
-        <p className="mt-5 rounded-md border border-border bg-soft p-4 text-sm font-bold leading-7 text-secondary">
-          {result.explanation}
-        </p>
+        <ResultConclusion result={result} />
         <AdvisorExplanationCard explanation={result.advisorExplanation} />
+        <div className="mt-5 rounded-md border border-border bg-soft p-4">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-muted">系统规则说明</p>
+          <p className="mt-2 text-sm font-bold leading-7 text-secondary">
+            {result.explanation}
+          </p>
+        </div>
         <div className="mt-5 flex flex-wrap gap-2">
           {result.gaps.map((gap) => (
             <Badge key={gap} tone="amber">{gap}</Badge>
@@ -805,6 +955,69 @@ function PlannerResult({
         </aside>
       </section>
     </div>
+  );
+}
+
+function ResultConclusion({ result }: { result: PlannerRecommendationResponse }) {
+  const coreProgram =
+    result.programs.find((item) => item.priority === "core") ?? result.programs[0];
+  const topCase = result.cases[0];
+  const primaryGap = result.gaps[0] ?? "路径主线需要进一步明确";
+
+  return (
+    <div className="mt-5 grid gap-3 xl:grid-cols-3">
+      <ConclusionTile
+        label="优先补强"
+        title={primaryGap}
+        description="先处理这项缺口，再看活动组合的难度和产出。"
+      />
+      {coreProgram ? (
+        <ConclusionTile
+          description={coreProgram.fitSummary}
+          href={`/programs/${coreProgram.program.id}`}
+          label="首选活动"
+          title={coreProgram.program.name}
+        />
+      ) : null}
+      {topCase ? (
+        <ConclusionTile
+          description={topCase.pathSummary}
+          href={`/cases/${topCase.studentCase.id}`}
+          label="参考案例"
+          title={topCase.studentCase.anonymousCode}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function ConclusionTile({
+  label,
+  title,
+  description,
+  href
+}: {
+  label: string;
+  title: string;
+  description: string;
+  href?: string;
+}) {
+  const content = (
+    <div className="h-full rounded-md border border-primary/15 bg-primary/5 p-4">
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">{label}</p>
+      <h3 className="mt-2 line-clamp-2 text-base font-black leading-6 text-ink">{title}</h3>
+      <p className="mt-2 line-clamp-3 text-xs font-bold leading-5 text-secondary">
+        {description}
+      </p>
+    </div>
+  );
+
+  return href ? (
+    <Link className="block h-full hover:-translate-y-0.5" href={href}>
+      {content}
+    </Link>
+  ) : (
+    content
   );
 }
 

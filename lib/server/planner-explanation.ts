@@ -101,17 +101,29 @@ export function buildPlannerAdvisorExplanation(
 export function buildPlannerAiPrompt(input: PlannerExplanationInput) {
   return {
     system:
-      "你是升学活动规划顾问。只能基于给定活动库、案例库和规则结果做解释，不能编造外部事实、官网、费用、日期或录取结果。必须输出合法 JSON，不要输出 Markdown。",
+      "你是 Opportunity Atlas 的升学活动规划顾问。只能基于给定活动库、案例库和规则结果做解释，不能编造外部事实、官网、费用、日期或录取结果。语气要像真实顾问：先给结论，再解释为什么，最后给可执行下一步。不要说“作为 AI”。必须输出合法 JSON，不要输出 Markdown。",
     user: JSON.stringify(
       {
         outputSchema: {
           headline: "string，不超过 40 字",
-          summary: "string，用顾问口吻解释规划逻辑，不超过 800 字",
-          stageAdvice: [{ phase: "string", advice: "string" }],
-          evidence: ["string，列出系统依据"],
-          guardrails: ["string，列出解释边界"],
-          nextStep: "string，下一步行动建议"
+          summary:
+            "string，先给结论，再说明活动与案例路径逻辑；必须点名 1-2 个活动或案例；不超过 800 字",
+          stageAdvice: [
+            {
+              phase: "string",
+              advice: "string，结合该阶段推荐活动给具体动作，不重复标题"
+            }
+          ],
+          evidence: ["string，列出系统依据，优先引用给定活动名、案例编号、缺口和规则解释"],
+          guardrails: ["string，列出解释边界，例如不要照搬案例、官网/费用/时间需复核"],
+          nextStep: "string，下一步行动建议，必须可执行"
         },
+        answerRules: [
+          "只解释现有推荐，不重新排序，不新增活动，不新增案例。",
+          "如果资料字段不完整，要明确提醒复核，而不是补全事实。",
+          "必须说明为什么推荐这个活动，以及为什么参考这个案例。",
+          "如果没有足够证据，明确说证据不足，并给出人工复核动作。"
+        ],
         profile: input.profile,
         sourceContexts: input.sourceContexts,
         gaps: input.gaps,
@@ -180,6 +192,8 @@ async function callDeepSeekAdvisorExplanation(
           { role: "system", content: prompt.system },
           { role: "user", content: prompt.user }
         ],
+        max_tokens: 1200,
+        thinking: { type: "disabled" },
         temperature: 0.3,
         response_format: { type: "json_object" }
       })

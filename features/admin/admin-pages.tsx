@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { Badge, Card, PageHeading, TextLink } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
@@ -1338,16 +1339,11 @@ export function AdminProgramsPage() {
                   <Badge key={`status-${program.id}`} tone={statusTone(program.status)}>
                     {recordStatusLabel(program.status)}
                   </Badge>,
-                  <div className="flex flex-wrap gap-2" key={`actions-${program.id}`}>
-                    <button
-                      className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
-                      onClick={() => startEditProgram(program)}
-                      type="button"
-                    >
-                      编辑
-                    </button>
-                    <TextLink href={`/programs/${program.id}`}>查看</TextLink>
-                  </div>
+                  <AdminRowActions
+                    key={`actions-${program.id}`}
+                    onEdit={() => startEditProgram(program)}
+                    viewHref={`/programs/${program.id}`}
+                  />
                 ])}
               />
             </div>
@@ -1686,16 +1682,11 @@ export function AdminCasesPage() {
                   <Badge key={`status-${studentCase.id}`} tone={statusTone(studentCase.status)}>
                     {recordStatusLabel(studentCase.status)}
                   </Badge>,
-                  <div className="flex flex-wrap gap-2" key={`actions-${studentCase.id}`}>
-                    <button
-                      className="rounded-sm border border-border bg-surface px-3 py-2 text-xs font-black text-primary hover:border-primary"
-                      onClick={() => startEditCase(studentCase)}
-                      type="button"
-                    >
-                      编辑
-                    </button>
-                    <TextLink href={`/cases/${studentCase.id}`}>查看</TextLink>
-                  </div>
+                  <AdminRowActions
+                    key={`actions-${studentCase.id}`}
+                    onEdit={() => startEditCase(studentCase)}
+                    viewHref={`/cases/${studentCase.id}`}
+                  />
                 ])}
               />
             </div>
@@ -2633,6 +2624,28 @@ function averageCaseActivities(cases: StudentCase[]) {
   return (total / cases.length).toFixed(1);
 }
 
+function AdminRowActions({
+  onEdit,
+  viewHref
+}: {
+  onEdit: () => void;
+  viewHref: string;
+}) {
+  const actionClass =
+    "inline-flex h-9 min-w-[52px] items-center justify-center whitespace-nowrap rounded-sm border border-border bg-surface px-3 text-xs font-black text-primary hover:border-primary";
+
+  return (
+    <div className="flex min-w-[116px] items-center gap-2">
+      <button className={actionClass} onClick={onEdit} type="button">
+        编辑
+      </button>
+      <Link className={actionClass} href={viewHref}>
+        查看
+      </Link>
+    </div>
+  );
+}
+
 function AdminStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 border-b border-border pb-3 last:border-b-0 last:pb-0">
@@ -2995,7 +3008,7 @@ function DataTable({
           <tr className="sticky top-0 z-10 border-b border-border bg-soft">
             {headers.map((header) => (
               <th
-                className="px-4 py-3 text-xs font-extrabold uppercase tracking-[0.14em] text-muted"
+                className={`px-4 py-3 text-xs font-extrabold uppercase tracking-[0.14em] text-muted ${adminTableColumnClass(header)}`}
                 key={header}
               >
                 {header}
@@ -3011,7 +3024,7 @@ function DataTable({
             >
               {row.map((cell, cellIndex) => (
                 <td
-                  className="max-w-[340px] px-4 py-3 text-sm font-bold leading-6 text-secondary"
+                  className={`max-w-[340px] px-4 py-3 text-sm font-bold leading-6 text-secondary align-middle ${adminTableColumnClass(headers[cellIndex])}`}
                   key={cellIndex}
                 >
                   {cell}
@@ -3023,4 +3036,20 @@ function DataTable({
       </table>
     </div>
   );
+}
+
+function adminTableColumnClass(header?: string) {
+  if (header === "选择") {
+    return "w-[64px]";
+  }
+  if (header === "状态") {
+    return "w-[96px] whitespace-nowrap";
+  }
+  if (header === "操作") {
+    return "w-[136px] whitespace-nowrap";
+  }
+  if (header === "完整度" || header === "活动数") {
+    return "w-[92px] whitespace-nowrap";
+  }
+  return "";
 }

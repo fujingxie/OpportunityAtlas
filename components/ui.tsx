@@ -80,7 +80,7 @@ export function Badge({
   return (
     <span
       className={cx(
-        "inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-black",
+        "inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-black",
         tones[tone]
       )}
     >

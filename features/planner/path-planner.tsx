@@ -267,7 +267,7 @@ export function PathPlanner(props: PathPlannerProps = {}) {
           智能路径规划
         </h1>
         <p className="mt-3 text-sm font-bold leading-7 text-secondary">
-          基于内部活动库和案例库生成推荐活动、相似案例和阶段路径。
+          根据你的年级、目标方向和已有经历，整理推荐活动、相似案例和阶段路径。
         </p>
         {sourceContext ? <SourceContextCard context={sourceContext} /> : null}
         <PlannerProfileSummaryCard profile={profile} />
@@ -466,13 +466,13 @@ export function PathPlanner(props: PathPlannerProps = {}) {
         ) : (
           <Card className="rounded-[30px] p-8">
             <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
-              Explainable Plan
+              Planning Preview
             </p>
             <h2 className="mt-2 text-[34px] font-black leading-tight tracking-normal text-ink">
               生成后会看到活动、案例和阶段路径
             </h2>
             <p className="mt-4 max-w-2xl text-sm font-bold leading-7 text-secondary">
-              第一版不会联网搜索，也不会编造官网、时间和费用；所有推荐都来自当前活动库与案例库。
+              填写左侧信息后，你会看到适合当前阶段的活动组合、参考案例和行动顺序。
             </p>
             {sourceContext ? (
               <div className="mt-5 max-w-2xl">
@@ -481,9 +481,9 @@ export function PathPlanner(props: PathPlannerProps = {}) {
             ) : null}
             <div className="mt-7 grid gap-4 md:grid-cols-3">
               {[
-                ["1", "画像摘要", "把年级、体系、目标地区和方向整理成可计算画像。"],
-                ["2", "内部检索", "从活动库和案例库找相似项目与路径。"],
-                ["3", "解释路径", "输出为什么推荐、何时做、参考哪个案例。"]
+                ["1", "画像摘要", "整理年级、体系、目标地区和方向。"],
+                ["2", "筛选路径", "找到更接近当前目标的活动与案例。"],
+                ["3", "规划解读", "说明推荐理由、执行时机和参考案例。"]
               ].map(([stepIndex, title, description]) => (
                 <div className="rounded-md border border-border bg-surface p-5" key={title}>
                   <span className="text-3xl font-black text-primary">{stepIndex}</span>
@@ -802,7 +802,7 @@ function PlannerResult({
         <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
-              Internal Recommendation
+              Path Recommendation
             </p>
             <h2 className="mt-2 text-[32px] font-black leading-tight tracking-normal text-ink">
               可解释路径建议
@@ -811,7 +811,7 @@ function PlannerResult({
               {result.profileSummary}
             </p>
           </div>
-          <Badge tone="blue">内部活动库 + 案例库</Badge>
+          <Badge tone="blue">活动与案例参考</Badge>
         </div>
         {result.sourceContexts.length ? (
           <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -827,7 +827,7 @@ function PlannerResult({
         <ResultConclusion result={result} />
         <AdvisorExplanationCard explanation={result.advisorExplanation} />
         <div className="mt-5 rounded-md border border-border bg-soft p-4">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-muted">系统规则说明</p>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-muted">推荐依据</p>
           <p className="mt-2 text-sm font-bold leading-7 text-secondary">
             {result.explanation}
           </p>
@@ -840,7 +840,7 @@ function PlannerResult({
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           <Metric label="推荐活动" value={`${result.programs.length} 个`} />
           <Metric label="相似案例" value={`${result.cases.length} 个`} />
-          <Metric label="风险提示" value={`${result.riskWarnings.length} 条`} />
+          <Metric label="注意事项" value={`${result.riskWarnings.length} 条`} />
         </div>
         <div className="mt-5 rounded-md border border-warning/25 bg-warning/10 p-4">
           <h3 className="text-sm font-black text-ink">需要注意</h3>
@@ -1027,7 +1027,7 @@ function AdvisorExplanationCard({ explanation }: { explanation: PlannerAdvisorEx
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">
-            Advisor Layer
+            规划解读
           </p>
           <h3 className="mt-2 text-xl font-black tracking-normal text-ink">
             {explanation.headline}
@@ -1044,8 +1044,8 @@ function AdvisorExplanationCard({ explanation }: { explanation: PlannerAdvisorEx
           items={explanation.stageAdvice.map((item) => `${item.phase}：${item.advice}`)}
           title="阶段建议"
         />
-        <ExplanationBlock items={explanation.evidence} title="系统依据" />
-        <ExplanationBlock items={explanation.guardrails} title="解释边界" />
+        <ExplanationBlock items={explanation.evidence} title="参考依据" />
+        <ExplanationBlock items={explanation.guardrails} title="注意事项" />
       </div>
       <div className="mt-4 rounded-sm border border-border bg-surface p-4">
         <p className="text-xs font-black uppercase tracking-[0.16em] text-muted">下一步</p>
@@ -1059,12 +1059,12 @@ function AdvisorExplanationCard({ explanation }: { explanation: PlannerAdvisorEx
 
 function explanationModeLabel(mode: PlannerAdvisorExplanation["mode"]) {
   if (mode === "deepseek") {
-    return "DeepSeek";
+    return "顾问解读";
   }
   if (mode === "ai_ready") {
-    return "AI-ready";
+    return "顾问解读";
   }
-  return "规则解释";
+  return "基础解读";
 }
 
 function ExplanationBlock({ title, items }: { title: string; items: string[] }) {

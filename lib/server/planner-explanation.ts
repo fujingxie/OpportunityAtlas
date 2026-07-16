@@ -77,20 +77,20 @@ function buildEvidence(input: PlannerExplanationInput) {
 export function buildPlannerAdvisorExplanation(
   input: PlannerExplanationInput
 ): PlannerAdvisorExplanation {
-  const topProgram = input.programs[0]?.program.name ?? "当前活动库中的相关活动";
+  const topProgram = input.programs[0]?.program.name ?? "相关活动";
   const sourceText = sourceContextText(input.sourceContexts);
   const leadingGap = input.gaps[0] ?? "活动主线需要进一步明确";
 
   return {
     mode: "ai_ready",
     headline: "规划解读",
-    summary: `${sourceText}。建议先围绕 ${input.profile.subjectArea} 建立一条可解释的活动主线，近期优先处理「${leadingGap}」。当前结果把「${topProgram}」放在较高优先级，是因为它与年级窗口、方向证据或已有路径上下文更接近。`,
+    summary: `${sourceText}。建议先围绕 ${input.profile.subjectArea} 建立一条清晰的活动主线，近期优先处理「${leadingGap}」。当前建议把「${topProgram}」放在较高优先级，是因为它与年级窗口、方向证据或已有路径上下文更接近。`,
     stageAdvice: buildStageAdvice(input.timeline),
     evidence: buildEvidence(input),
     guardrails: [
-      "不编造活动官网、费用、时间和录取结果，所有事实字段以活动库和案例库为准。",
-      "AI 解释层只负责组织表达，不直接改动活动排序、案例排序和风险提示。",
-      "若活动资料完整度偏低，结果页必须保留人工复核提醒。"
+      "活动官网、费用、时间和录取结果建议在决定前再次复核。",
+      "案例只能用于路径参考，不能直接照搬。",
+      "若活动资料完整度偏低，建议先补充关键信息再做决定。"
     ],
     nextStep:
       input.riskWarnings[0] ??
@@ -101,7 +101,7 @@ export function buildPlannerAdvisorExplanation(
 export function buildPlannerAiPrompt(input: PlannerExplanationInput) {
   return {
     system:
-      "你是 Opportunity Atlas 的升学活动规划顾问。只能基于给定活动库、案例库和规则结果做解释，不能编造外部事实、官网、费用、日期或录取结果。语气要像真实顾问：先给结论，再解释为什么，最后给可执行下一步。不要说“作为 AI”。必须输出合法 JSON，不要输出 Markdown。",
+      "你是 Opportunity Atlas 的升学活动规划顾问。只能基于给定活动、案例和规划结果做解释，不能编造官网、费用、日期或录取结果。语气要像真实顾问：先给结论，再解释为什么，最后给可执行下一步。面向学生和家长表达，不要提内部规则、数据库、API、模型、AI、DeepSeek、联网等实现信息。必须输出合法 JSON，不要输出 Markdown。",
     user: JSON.stringify(
       {
         outputSchema: {
@@ -114,8 +114,8 @@ export function buildPlannerAiPrompt(input: PlannerExplanationInput) {
               advice: "string，结合该阶段推荐活动给具体动作，不重复标题"
             }
           ],
-          evidence: ["string，列出系统依据，优先引用给定活动名、案例编号、缺口和规则解释"],
-          guardrails: ["string，列出解释边界，例如不要照搬案例、官网/费用/时间需复核"],
+          evidence: ["string，列出参考依据，优先引用给定活动名、案例编号、缺口和规划说明"],
+          guardrails: ["string，列出注意事项，例如不要照搬案例、官网/费用/时间需复核"],
           nextStep: "string，下一步行动建议，必须可执行"
         },
         answerRules: [
@@ -163,10 +163,8 @@ function deepseekConfig() {
 }
 
 function fallbackWithNotice(template: PlannerAdvisorExplanation, message: string) {
-  return {
-    ...template,
-    guardrails: Array.from(new Set([...template.guardrails, message]))
-  };
+  void message;
+  return template;
 }
 
 async function callDeepSeekAdvisorExplanation(
@@ -225,7 +223,7 @@ async function callDeepSeekAdvisorExplanation(
       guardrails: Array.from(
         new Set([
           ...parsed.data.guardrails,
-          "DeepSeek 只参与解释表达，活动排序、案例排序和事实字段仍由系统规则控制。"
+          "推荐结果需结合个人时间安排和官方要求再次确认。"
         ])
       )
     };

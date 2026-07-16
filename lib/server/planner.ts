@@ -514,18 +514,18 @@ function buildExplanation(
   gaps: string[],
   source: PlannerSourceOptions = {}
 ) {
-  const topProgram = programs[0]?.program.name ?? "当前活动库中的相关项目";
+  const topProgram = programs[0]?.program.name ?? "相关活动";
   const topCase = cases[0]?.studentCase.anonymousCode ?? "相近案例";
   if (source.sourceProgram) {
-    return `本次以活动「${source.sourceProgram.name}」为锚点，先判断它在 ${profile.subjectArea} 路径里更适合作为核心动作还是补充选择，再补充同方向活动与相关案例。系统优先选择 ${topProgram}，并参考 ${topCase} 等案例解释活动组合。当前不做外部联网搜索，时间、费用和官网仍以活动库维护数据为准。重点补强项：${gaps.slice(0, 3).join("、")}。`;
+    return `本次以活动「${source.sourceProgram.name}」为参考起点，先判断它在 ${profile.subjectArea} 路径里更适合作为核心动作还是补充选择，再补充同方向活动与相关案例。当前建议优先关注 ${topProgram}，并参考 ${topCase} 等案例理解活动组合。报名前建议再次复核时间、费用和官网信息。重点补强项：${gaps.slice(0, 3).join("、")}。`;
   }
   if (source.sourceCase) {
-    return `本次以案例「${source.sourceCase.anonymousCode}」为参考路径，先提取该案例中的活动组合和申请方向，再反推你当前阶段需要补齐的活动证据。系统优先选择 ${topProgram}，并用 ${topCase} 等案例做对照。当前不做外部联网搜索，时间、费用和官网仍以活动库维护数据为准。重点补强项：${gaps.slice(0, 3).join("、")}。`;
+    return `本次以案例「${source.sourceCase.anonymousCode}」为参考路径，先提取该案例中的活动组合和申请方向，再反推你当前阶段需要补齐的活动证据。当前建议优先关注 ${topProgram}，并用 ${topCase} 等案例做对照。报名前建议再次复核时间、费用和官网信息。重点补强项：${gaps.slice(0, 3).join("、")}。`;
   }
   if (source.sourceQuery) {
-    return `本次参考搜索关键词「${source.sourceQuery}」生成路径，系统会优先考虑命中关键词的活动与案例，同时结合年级、方向和履历缺口做排序。当前优先选择 ${topProgram}，并参考 ${topCase} 等案例。时间、费用和官网仍以活动库维护数据为准。重点补强项：${gaps.slice(0, 3).join("、")}。`;
+    return `本次参考搜索关键词「${source.sourceQuery}」生成路径，会优先关注与关键词接近的活动与案例，同时结合年级、方向和履历缺口做取舍。当前建议优先关注 ${topProgram}，并参考 ${topCase} 等案例。报名前建议再次复核时间、费用和官网信息。重点补强项：${gaps.slice(0, 3).join("、")}。`;
   }
-  return `建议先围绕 ${profile.subjectArea} 建立可证明的活动主线。系统优先选择 ${topProgram}，因为它与年级、方向或履历缺口更接近；同时参考 ${topCase} 等案例，帮助你判断活动组合如何服务申请叙事。当前不做外部联网搜索，时间、费用和官网仍以活动库维护数据为准。重点补强项：${gaps.slice(0, 3).join("、")}。`;
+  return `建议先围绕 ${profile.subjectArea} 建立可证明的活动主线。当前建议优先关注 ${topProgram}，因为它与年级、方向或履历缺口更接近；同时参考 ${topCase} 等案例，帮助你判断活动组合如何服务申请叙事。报名前建议再次复核时间、费用和官网信息。重点补强项：${gaps.slice(0, 3).join("、")}。`;
 }
 
 function buildRiskWarnings(
@@ -535,10 +535,10 @@ function buildRiskWarnings(
   source: PlannerSourceOptions = {}
 ) {
   const warnings = [
-    "推荐基于内部活动库和案例库生成，活动时间、费用、官网仍需以官方信息复核。"
+    "活动时间、费用、官网等关键信息建议在决定前再次复核。"
   ];
   if (source.sourceProgram) {
-    warnings.push("当前活动只是规划锚点，不代表必须参加；若年级、费用或时间不合适，应选择替代活动。");
+    warnings.push("当前活动只是规划参考起点，不代表必须参加；若年级、费用或时间不合适，应选择替代活动。");
   }
   if (source.sourceCase) {
     warnings.push("参考案例不能直接复制，需要结合你的成绩、时间窗口和活动产出重新取舍。");

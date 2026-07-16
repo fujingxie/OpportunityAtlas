@@ -38,9 +38,9 @@ describe("path planner recommendations", () => {
     expect(result.riskWarnings.length).toBeGreaterThan(0);
     expect(result.advisorExplanation.mode).toBe("ai_ready");
     expect(result.advisorExplanation.guardrails).toEqual(
-      expect.arrayContaining([expect.stringContaining("不编造活动官网")])
+      expect.arrayContaining([expect.stringContaining("活动官网")])
     );
-    expect(result.explanation).toContain("活动库");
+    expect(result.explanation).toContain("重点补强项");
   });
 
   it("keeps source program and source case as planning anchors", () => {
@@ -79,7 +79,7 @@ describe("path planner recommendations", () => {
     expect(result.explanation).toContain(mockPrograms[0].name);
     expect(result.riskWarnings).toEqual(
       expect.arrayContaining([
-        expect.stringContaining("当前活动只是规划锚点")
+        expect.stringContaining("当前活动只是规划参考起点")
       ])
     );
   });
@@ -118,9 +118,7 @@ describe("path planner recommendations", () => {
     });
 
     expect(explanation.mode).toBe("ai_ready");
-    expect(explanation.guardrails).toEqual(
-      expect.arrayContaining([expect.stringContaining("DeepSeek API key 未配置")])
-    );
+    expect(explanation.guardrails.join(" ")).not.toMatch(/DeepSeek|API|模板/);
 
     if (previousProvider === undefined) {
       delete process.env.PLANNER_EXPLANATION_PROVIDER;
